@@ -1,0 +1,13 @@
+{
+  "name" : "Event-triggered control -- LPIoT Project Course",
+  "description" : "Zolertia Firefly (CC2538) event-triggered control protocol -- LPIoT Project Course",
+  "start_time" : "asap",
+  "duration" : 480,
+  "logs": 0,
+  "binaries" : {
+    "hardware" : "firefly",
+    "bin_file" : "../app.bin",
+    "targets" : "disi_povo2",
+    "programAddress": "0x00200000"
+  }
+}
