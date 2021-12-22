@@ -10,20 +10,21 @@ else
 	endif
 endif
 
-
-DEFINES=PROJECT_CONF_H=\"project-conf.h\"
+# --- PROJECT
 CONTIKI_PROJECT = app
 
+# --- CONFIGURATION
+DEFINES=PROJECT_CONF_H=\"src/project-conf.h\"
 
-PROJECT_SOURCEFILES += etc.c
+# --- SOURCE FILES
+PROJECTDIRS += src src/tools
+PROJECT_SOURCEFILES += etc.c simple-energest.c
 
-
-# Tool to estimate node duty cycle 
-PROJECTDIRS += tools
-PROJECT_SOURCEFILES += simple-energest.c
-
+# --- RECIPES
 all: $(CONTIKI_PROJECT)
 
+# --- CONTIKI
 CONTIKI_WITH_RIME = 1
 CONTIKI ?= ../../contiki
+
 include $(CONTIKI)/Makefile.include
