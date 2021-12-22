@@ -17,7 +17,7 @@ CONTIKI_PROJECT = app
 DEFINES=PROJECT_CONF_H=\"src/project-conf.h\"
 
 # --- SOURCE FILES
-PROJECTDIRS += src src/tools
+PROJECTDIRS += src src/etc src/tools
 PROJECT_SOURCEFILES += etc.c simple-energest.c
 
 # --- RECIPES
