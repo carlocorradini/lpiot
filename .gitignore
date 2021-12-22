@@ -4,3 +4,4 @@
 /app.sky
 /contiki-sky.a
 /contiki-sky.map
+*.log
