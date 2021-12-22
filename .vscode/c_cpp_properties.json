@@ -1,0 +1,15 @@
+{
+    "version": 4,
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${CONTIKI}/**",
+                "${workspaceFolder}/**"
+            ],
+            "compilerPath": "/usr/bin/msp430-gcc",
+            "cStandard": "c17",
+            "intelliSenseMode": "linux-gcc-arm"
+        }
+    ]
+}
