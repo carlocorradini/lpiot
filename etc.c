@@ -1,12 +1,14 @@
-#include <stdbool.h>
-#include "contiki.h"
-#include "lib/random.h"
-#include "net/rime/rime.h"
-#include "leds.h"
-#include "net/netstack.h"
-#include <stdio.h>
-#include "core/net/linkaddr.h"
 #include "etc.h"
+
+#include <stdbool.h>
+#include <stdio.h>
+
+#include "contiki.h"
+#include "core/net/linkaddr.h"
+#include "leds.h"
+#include "lib/random.h"
+#include "net/netstack.h"
+#include "net/rime/rime.h"
 /*---------------------------------------------------------------------------*/
 /* A simple debug system to enable/disable some printfs */
 #define DEBUG 0
@@ -31,11 +33,9 @@
 /*                           Application Interface                           */
 /*---------------------------------------------------------------------------*/
 /* Create connection(s) and start the protocol */
-bool
-etc_open(struct etc_conn* conn, uint16_t channels, 
-         node_role_t node_role, const struct etc_callbacks *callbacks,
-         linkaddr_t *sensors, uint8_t num_sensors)
-{
+bool etc_open(struct etc_conn *conn, uint16_t channels, node_role_t node_role,
+              const struct etc_callbacks *callbacks, linkaddr_t *sensors,
+              uint8_t num_sensors) {
   /* Initialize the connector structure */
 
   /* Open the underlying Rime primitives */
@@ -46,18 +46,14 @@ etc_open(struct etc_conn* conn, uint16_t channels,
 }
 /*---------------------------------------------------------------------------*/
 /* Turn off the protocol */
-void
-etc_close(struct etc_conn *conn)
-{
+void etc_close(struct etc_conn *conn) {
   /* Turn off connections to ignore any incoming packet
    * and stop transmitting */
 }
 /*---------------------------------------------------------------------------*/
 /* Used by the app to share the most recent sensed value;
  * ONLY USED BY SENSORS */
-void
-etc_update(uint32_t value, uint32_t threshold)
-{
+void etc_update(uint32_t value, uint32_t threshold) {
   /* Update local value and threshold, to be sent in case of event */
 }
 /*---------------------------------------------------------------------------*/
@@ -65,9 +61,7 @@ etc_update(uint32_t value, uint32_t threshold)
  * contention).
  * Returns 0 if new events are currently being suppressed.
  * ONLY USED BY SENSORS */
-int
-etc_trigger(struct etc_conn *conn, uint32_t value, uint32_t threshold)
-{  
+int etc_trigger(struct etc_conn *conn, uint32_t value, uint32_t threshold) {
   /* Prepare event message */
 
   /* Suppress other events for a given time window */
@@ -77,10 +71,8 @@ etc_trigger(struct etc_conn *conn, uint32_t value, uint32_t threshold)
 /*---------------------------------------------------------------------------*/
 /* Called by the controller to send commands to a given destination.
  * ONLY USED BY CONTROLLER */
-int
-etc_command(struct etc_conn *conn, const linkaddr_t *dest,
-            command_type_t command, uint32_t threshold)
-{
+int etc_command(struct etc_conn *conn, const linkaddr_t *dest,
+                command_type_t command, uint32_t threshold) {
   /* Prepare and send command */
 }
 /*---------------------------------------------------------------------------*/
@@ -95,7 +87,7 @@ etc_command(struct etc_conn *conn, const linkaddr_t *dest,
 struct event_msg_t {
   linkaddr_t event_source;
   uint16_t event_seqn;
-}__attribute__((packed));
+} __attribute__((packed));
 /*---------------------------------------------------------------------------*/
 /* ... */
 /*---------------------------------------------------------------------------*/
@@ -106,7 +98,7 @@ struct collect_msg_t {
   linkaddr_t event_source;
   uint16_t event_seqn;
   /* ... */
-}__attribute__((packed));
+} __attribute__((packed));
 /*---------------------------------------------------------------------------*/
 /* ... */
 /*---------------------------------------------------------------------------*/
@@ -117,7 +109,7 @@ struct command_msg_t {
   linkaddr_t event_source;
   uint16_t event_seqn;
   /* ... */
-}__attribute__((packed));
+} __attribute__((packed));
 /*---------------------------------------------------------------------------*/
 /* ... */
 /*---------------------------------------------------------------------------*/

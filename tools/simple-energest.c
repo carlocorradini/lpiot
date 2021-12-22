@@ -32,16 +32,19 @@
  *      Simple Energest Library File
  *      This file implements a simple Contiki Process in which information
  *      about Radio and CPU usage obtained with Contiki Energest are printed.
- *		
- *      This file is based on Simon Duquennoy's ORPL Tools and Contiki Powertrace.
+ *
+ *      This file is based on Simon Duquennoy's ORPL Tools and Contiki
+ * Powertrace.
  *
  * \author
  *      Pablo Corbalan <pablo.corbalan@cit.ie>
  */
 
-#include "contiki.h"
 #include "simple-energest.h"
+
 #include <stdio.h>
+
+#include "contiki.h"
 /*---------------------------------------------------------------------------*/
 #define DEBUG 1
 #if DEBUG
@@ -57,9 +60,7 @@ static uint32_t curr_cpu, curr_lpm, curr_tx, curr_rx;
 /*---------------------------------------------------------------------------*/
 PROCESS(energest_process, "Energest Process");
 /*---------------------------------------------------------------------------*/
-void 
-simple_energest_start(void)
-{
+void simple_energest_start(void) {
   energest_flush();
 
   last_cpu = energest_type_time(ENERGEST_TYPE_CPU);
@@ -71,9 +72,7 @@ simple_energest_start(void)
   process_start(&energest_process, NULL);
 }
 /*---------------------------------------------------------------------------*/
-void 
-simple_energest_step(void)
-{
+void simple_energest_step(void) {
   energest_flush();
 
   curr_cpu = energest_type_time(ENERGEST_TYPE_CPU);
@@ -91,21 +90,16 @@ simple_energest_step(void)
   last_tx = curr_tx;
   last_rx = curr_rx;
 
-  PRINTF("Energest: %u %lu %lu %lu %lu\n",
-  	cnt++,
-  	delta_cpu,
-  	delta_lpm,
-  	delta_tx,
-  	delta_rx);
+  PRINTF("Energest: %u %lu %lu %lu %lu\n", cnt++, delta_cpu, delta_lpm,
+         delta_tx, delta_rx);
 }
 /*---------------------------------------------------------------------------*/
-PROCESS_THREAD(energest_process, ev, data)
-{
+PROCESS_THREAD(energest_process, ev, data) {
   static struct etimer periodic;
   PROCESS_BEGIN();
   etimer_set(&periodic, 15 * CLOCK_SECOND);
-  
-  while(1) {
+
+  while (1) {
     PROCESS_WAIT_UNTIL(etimer_expired(&periodic));
     etimer_reset(&periodic);
     simple_energest_step();
