@@ -15,12 +15,12 @@
 #include "contiki.h"
 #include "core/net/linkaddr.h"
 #include "dev/button-sensor.h"
-#include "etc.h"
+#include "etc/etc.h"
 #include "leds.h"
 #include "lib/random.h"
 #include "net/netstack.h"
 #include "net/rime/rime.h"
-#include "simple-energest.h"
+#include "tools/simple-energest.h"
 /*---------------------------------------------------------------------------*/
 #define ETC_FIRST_CHANNEL (0xAA)
 #define CONTROLLER_COLLECT_WAIT (CLOCK_SECOND * 10)
