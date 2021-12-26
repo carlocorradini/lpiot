@@ -11,20 +11,22 @@
 #include "etc/etc.h"
 #include "tools/simple-energest.h"
 
-/*---------------------------------------------------------------------------*/
 #define ETC_FIRST_CHANNEL (0xAA)
+
 #define CONTROLLER_COLLECT_WAIT (CLOCK_SECOND * 10)
 
-/* You can change the values hereafter to increase / decrease the rate
- * of event detection of the system. In the final report, please REMEMBER to
- * mention how you defined such variables for each experiment! */
 #define SENSOR_UPDATE_INTERVAL (CLOCK_SECOND * 7)
+
 #define SENSOR_UPDATE_INCREMENT (random_rand() % 300)
+
 #define SENSOR_STARTING_VALUE_STEP (1000)
+
 #define CONTROLLER_MAX_DIFF (10000)
+
 #define CONTROLLER_MAX_THRESHOLD (50000)
+
 #define CONTROLLER_CRITICAL_DIFF (15000)
-/*---------------------------------------------------------------------------*/
+
 #ifndef CONTIKI_TARGET_SKY
 linkaddr_t etc_controller = {{0xF7, 0x9C}}; /* Firefly node 1 */
 #define NUM_SENSORS 5
@@ -44,13 +46,12 @@ linkaddr_t etc_sensors[NUM_SENSORS] = {{{0x02, 0x00}},
                                        {{0x05, 0x00}},
                                        {{0x06, 0x00}}};
 #endif
-/*---------------------------------------------------------------------------*/
+
 PROCESS(app_process, "App process");
 AUTOSTART_PROCESSES(&app_process);
-/*---------------------------------------------------------------------------*/
+
 /* ETC connection */
-/*---------------------------------------------------------------------------*/
-static struct etc_conn etc;
+static struct etc_conn_t etc_conn;
 static void recv_cb(const linkaddr_t *event_source, uint16_t event_seqn,
                     const linkaddr_t *source, uint32_t value,
                     uint32_t threshold);
@@ -116,8 +117,8 @@ PROCESS_THREAD(app_process, ev, data) {
       num_sensor_readings = 0;
 
       /* Open connection (builds the tree when started) */
-      etc_open(&etc, ETC_FIRST_CHANNEL, NODE_ROLE_CONTROLLER, &cb, etc_sensors,
-               NUM_SENSORS);
+      etc_open(&etc_conn, ETC_FIRST_CHANNEL, NODE_ROLE_CONTROLLER, &cb,
+               etc_sensors, NUM_SENSORS);
       printf("App: Controller started\n");
     } else {
       /* Check if the node is a sensor/actuator or a forwarder */
@@ -142,7 +143,7 @@ PROCESS_THREAD(app_process, ev, data) {
 
           /* Open connection (only the command callback is set for
            * sensor/actuators) */
-          etc_open(&etc, ETC_FIRST_CHANNEL, NODE_ROLE_SENSOR_ACTUATOR, &cb,
+          etc_open(&etc_conn, ETC_FIRST_CHANNEL, NODE_ROLE_SENSOR_ACTUATOR, &cb,
                    etc_sensors, NUM_SENSORS);
           printf("App: Sensor/actuator started\n");
           break;
@@ -152,8 +153,8 @@ PROCESS_THREAD(app_process, ev, data) {
       /* The node is a forwarder */
       if (!is_sensor) {
         /* Open connection (no callback is set for forwarders) */
-        etc_open(&etc, ETC_FIRST_CHANNEL, NODE_ROLE_FORWARDER, &cb, etc_sensors,
-                 NUM_SENSORS);
+        etc_open(&etc_conn, ETC_FIRST_CHANNEL, NODE_ROLE_FORWARDER, &cb,
+                 etc_sensors, NUM_SENSORS);
         printf("App: Forwarder started\n");
       }
     }
@@ -161,7 +162,7 @@ PROCESS_THREAD(app_process, ev, data) {
     /* Wait for button press (node failure simulation) */
     PROCESS_WAIT_EVENT_UNTIL(ev == sensors_event);
     printf("App: Simulating node failure\n");
-    etc_close(&etc);
+    etc_close(&etc_conn);
     NETSTACK_MAC.off(false);
     leds_on(LEDS_RED);
 
@@ -181,13 +182,13 @@ static void sensor_timer_cb(void *ptr) {
   etc_update(sensor_value, sensor_threshold);
   printf("Reading (%lu, %lu)\n", sensor_value, sensor_threshold);
   if (sensor_value > sensor_threshold) {
-    int ret = etc_trigger(&etc, sensor_value, sensor_threshold);
+    int ret = etc_trigger(&etc_conn, sensor_value, sensor_threshold);
 
     /* Logging (should not log if etc_trigger returns 0,
      * indicating that new events are currently being suppressed) */
     if (ret) {
-      printf("TRIGGER [%02x:%02x, %u]\n", etc.event_source.u8[0],
-             etc.event_source.u8[1], etc.event_seqn);
+      printf("TRIGGER [%02x:%02x, %u]\n", etc_conn.event_source.u8[0],
+             etc_conn.event_source.u8[1], etc_conn.event_seqn);
     }
   }
   ctimer_set(&sensor_timer, SENSOR_UPDATE_INTERVAL, sensor_timer_cb, NULL);
@@ -214,8 +215,8 @@ static void recv_cb(const linkaddr_t *event_source, uint16_t event_seqn,
    * always use the same event_source and event_seqn for collection
    * and actuation */
   printf("COLLECT [%02x:%02x, %u] %02x:%02x (%lu, %lu)\n",
-         etc.event_source.u8[0], etc.event_source.u8[1], etc.event_seqn,
-         source->u8[0], source->u8[1], value, threshold);
+         etc_conn.event_source.u8[0], etc_conn.event_source.u8[1],
+         etc_conn.event_seqn, source->u8[0], source->u8[1], value, threshold);
 
   /* If all data was collected, call actuation logic */
 }
@@ -233,8 +234,8 @@ static void ev_cb(const linkaddr_t *event_source, uint16_t event_seqn) {
    * otherwise, update the current event being handled */
 
   /* Logging */
-  printf("EVENT [%02x:%02x, %u]\n", etc.event_source.u8[0],
-         etc.event_source.u8[1], etc.event_seqn);
+  printf("EVENT [%02x:%02x, %u]\n", etc_conn.event_source.u8[0],
+         etc_conn.event_source.u8[1], etc_conn.event_seqn);
 
   /* Wait for sensor readings */
 }
@@ -344,12 +345,12 @@ void actuation_commands() {
   int i;
   for (i = 0; i < NUM_SENSORS; i++) {
     if (sensor_readings[i].command != COMMAND_TYPE_NONE) {
-      etc_command(&etc, &sensor_readings[i].addr, sensor_readings[i].command,
-                  sensor_readings[i].threshold);
+      etc_command(&etc_conn, &sensor_readings[i].addr,
+                  sensor_readings[i].command, sensor_readings[i].threshold);
 
       /* Logging (based on the current event, expressed by source seqn) */
-      printf("COMMAND [%02x:%02x, %u] %02x:%02x\n", etc.event_source.u8[0],
-             etc.event_source.u8[1], etc.event_seqn,
+      printf("COMMAND [%02x:%02x, %u] %02x:%02x\n", etc_conn.event_source.u8[0],
+             etc_conn.event_source.u8[1], etc_conn.event_seqn,
              sensor_readings[i].addr.u8[0], sensor_readings[i].addr.u8[1]);
     }
   }

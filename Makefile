@@ -3,7 +3,7 @@ CONTIKI_PROJECT=app
 
 # --- CONFIGURATION
 # Enable or Disable pedantic checks
-CHECKS?=true
+CHECKS?=false
 # - Contiki
 DEFINES=PROJECT_CONF_H=\"src/config.h\"
 CONTIKI_WITH_RIME=1

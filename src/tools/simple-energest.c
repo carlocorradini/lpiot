@@ -42,24 +42,23 @@
 
 #include "simple-energest.h"
 
+#include <contiki.h>
 #include <stdio.h>
 
-#include "contiki.h"
-/*---------------------------------------------------------------------------*/
 #define DEBUG 1
 #if DEBUG
 #define PRINTF(...) printf(__VA_ARGS__)
 #else
 #define PRINTF(...)
 #endif
-/*---------------------------------------------------------------------------*/
+
 static uint16_t cnt;
 static uint32_t last_cpu, last_lpm, last_tx, last_rx;
 static uint32_t delta_cpu, delta_lpm, delta_tx, delta_rx;
 static uint32_t curr_cpu, curr_lpm, curr_tx, curr_rx;
-/*---------------------------------------------------------------------------*/
+
 PROCESS(energest_process, "Energest Process");
-/*---------------------------------------------------------------------------*/
+
 void simple_energest_start(void) {
   energest_flush();
 
@@ -71,7 +70,7 @@ void simple_energest_start(void) {
   /* Start Energest Printing Process */
   process_start(&energest_process, NULL);
 }
-/*---------------------------------------------------------------------------*/
+
 void simple_energest_step(void) {
   energest_flush();
 
@@ -93,7 +92,7 @@ void simple_energest_step(void) {
   PRINTF("Energest: %u %lu %lu %lu %lu\n", cnt++, delta_cpu, delta_lpm,
          delta_tx, delta_rx);
 }
-/*---------------------------------------------------------------------------*/
+
 PROCESS_THREAD(energest_process, ev, data) {
   static struct etimer periodic;
   PROCESS_BEGIN();

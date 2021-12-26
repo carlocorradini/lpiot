@@ -35,10 +35,11 @@
  * \author Simon Duquennoy <simonduq@sics.se>
  */
 
-#ifndef SIMPLE_ENERGEST_H
-#define SIMPLE_ENERGEST_H
-/*---------------------------------------------------------------------------*/
+#ifndef _SIMPLE_ENERGEST_H_
+#define _SIMPLE_ENERGEST_H_
+
 void simple_energest_start(void);
+
 void simple_energest_step(void);
-/*---------------------------------------------------------------------------*/
-#endif /* SIMPLE_ENERGEST_H */
+
+#endif

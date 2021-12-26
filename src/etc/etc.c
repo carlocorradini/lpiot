@@ -33,7 +33,7 @@
 /*                           Application Interface                           */
 /*---------------------------------------------------------------------------*/
 /* Create connection(s) and start the protocol */
-bool etc_open(struct etc_conn *conn, uint16_t channels, node_role_t node_role,
+bool etc_open(struct etc_conn_t *conn, uint16_t channels, node_role_t node_role,
               const struct etc_callbacks *callbacks, linkaddr_t *sensors,
               uint8_t num_sensors) {
   /* Initialize the connector structure */
@@ -46,7 +46,7 @@ bool etc_open(struct etc_conn *conn, uint16_t channels, node_role_t node_role,
 }
 /*---------------------------------------------------------------------------*/
 /* Turn off the protocol */
-void etc_close(struct etc_conn *conn) {
+void etc_close(struct etc_conn_t *conn) {
   /* Turn off connections to ignore any incoming packet
    * and stop transmitting */
 }
@@ -61,7 +61,7 @@ void etc_update(uint32_t value, uint32_t threshold) {
  * contention).
  * Returns 0 if new events are currently being suppressed.
  * ONLY USED BY SENSORS */
-int etc_trigger(struct etc_conn *conn, uint32_t value, uint32_t threshold) {
+int etc_trigger(struct etc_conn_t *conn, uint32_t value, uint32_t threshold) {
   /* Prepare event message */
 
   /* Suppress other events for a given time window */
@@ -71,7 +71,7 @@ int etc_trigger(struct etc_conn *conn, uint32_t value, uint32_t threshold) {
 /*---------------------------------------------------------------------------*/
 /* Called by the controller to send commands to a given destination.
  * ONLY USED BY CONTROLLER */
-int etc_command(struct etc_conn *conn, const linkaddr_t *dest,
+int etc_command(struct etc_conn_t *conn, const linkaddr_t *dest,
                 command_type_t command, uint32_t threshold) {
   /* Prepare and send command */
 }

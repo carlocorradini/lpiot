@@ -55,7 +55,7 @@ struct etc_callbacks {
 };
 
 /* Connection object */
-struct etc_conn {
+struct etc_conn_t {
   /* Connections */
   /* ... */
 
@@ -92,20 +92,20 @@ struct etc_conn {
  * @return true ETC connection succeeded.
  * @return false ETC connection failed.
  */
-bool etc_open(struct etc_conn *conn, uint16_t channels, node_role_t node_role,
+bool etc_open(struct etc_conn_t *conn, uint16_t channels, node_role_t node_role,
               const struct etc_callbacks *callbacks, linkaddr_t *sensors,
               uint8_t num_sensors);
 
 /* Sensor functions */
 void etc_update(uint32_t value, uint32_t threshold);
 
-int etc_trigger(struct etc_conn *conn, uint32_t value, uint32_t threshold);
+int etc_trigger(struct etc_conn_t *conn, uint32_t value, uint32_t threshold);
 
 /* Controller function */
-int etc_command(struct etc_conn *conn, const linkaddr_t *dest,
+int etc_command(struct etc_conn_t *conn, const linkaddr_t *dest,
                 command_type_t command, uint32_t threshold);
 
 /* Close connection */
-void etc_close(struct etc_conn *conn);
+void etc_close(struct etc_conn_t *conn);
 
 #endif
