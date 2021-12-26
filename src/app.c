@@ -135,7 +135,14 @@ PROCESS_THREAD(app_process, ev, data) {
         is_sensor = true;
 
         // Initialize sensed data and threshold
-        sensor_value = SENSOR_STARTING_VALUE_STEP * i;
+        uint sensor_index;
+        for (uint i = 0; i < NUM_SENSORS; i++) {
+          if (linkaddr_cmp(&etc_sensors[i], &linkaddr_node_addr)) {
+            sensor_index = i;
+            break;
+          }
+        }
+        sensor_value = SENSOR_STARTING_VALUE_STEP * sensor_index;
         sensor_threshold = CONTROLLER_MAX_DIFF;
 
         // Set periodic update of the sensed value
