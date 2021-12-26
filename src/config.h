@@ -1,7 +1,6 @@
-/*---------------------------------------------------------------------------*/
-#ifndef PROJECT_CONF_H_
-#define PROJECT_CONF_H_
-/*---------------------------------------------------------------------------*/
+#ifndef _CONFIG_H_
+#define _CONFIG_H_
+
 /* Change to match your configuration */
 #define IEEE802154_CONF_PANID 0xABCD
 
@@ -21,13 +20,14 @@
 #define COFFEE_CONF_SIZE 0
 
 #define LPM_CONF_MAX_PM LPM_PM0
-/*---------------------------------------------------------------------------*/
+
 #define NULLRDC_CONF_802154_AUTOACK 1
+
 #undef NETSTACK_CONF_MAC
 #define NETSTACK_CONF_MAC csma_driver
+
 #undef NETSTACK_CONF_RDC
-//#define NETSTACK_CONF_RDC		nullrdc_driver
+//#define NETSTACK_CONF_RDC	nullrdc_driver
 #define NETSTACK_CONF_RDC contikimac_driver
-/*---------------------------------------------------------------------------*/
-#endif /* PROJECT_CONF_H_ */
-/*---------------------------------------------------------------------------*/
+
+#endif

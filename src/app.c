@@ -1,26 +1,16 @@
-/*---------------------------------------------------------------------------
- *
- * Event-Triggered Control
- * LPIoT Project 2021/2022
- *
- * This is the template for the project.
- * Many comments have been added to help with the implementation.
- * However, note that hints in comments are not exhaustive;
- * they are just meant to show what is the main purpose of each function.
- *
- *---------------------------------------------------------------------------*/
+#include <contiki.h>
+#include <core/net/linkaddr.h>
+#include <dev/button-sensor.h>
+#include <leds.h>
+#include <lib/random.h>
+#include <net/netstack.h>
+#include <net/rime/rime.h>
 #include <stdbool.h>
 #include <stdio.h>
 
-#include "contiki.h"
-#include "core/net/linkaddr.h"
-#include "dev/button-sensor.h"
 #include "etc/etc.h"
-#include "leds.h"
-#include "lib/random.h"
-#include "net/netstack.h"
-#include "net/rime/rime.h"
 #include "tools/simple-energest.h"
+
 /*---------------------------------------------------------------------------*/
 #define ETC_FIRST_CHANNEL (0xAA)
 #define CONTROLLER_COLLECT_WAIT (CLOCK_SECOND * 10)
@@ -36,30 +26,23 @@
 #define CONTROLLER_CRITICAL_DIFF (15000)
 /*---------------------------------------------------------------------------*/
 #ifndef CONTIKI_TARGET_SKY
-linkaddr_t etc_controller = {
-    {0xF7, 0x9C}}; /* Firefly node 1 will be our etc_controller */
+linkaddr_t etc_controller = {{0xF7, 0x9C}}; /* Firefly node 1 */
 #define NUM_SENSORS 5
-linkaddr_t etc_sensors[] = {
-    {{0xF3,
-      0x84}}, /* Firefly node 3 will be one of our sensor-actuator nodes */
-    {{0xF2,
-      0x33}}, /* Firefly node 12 will be one of our sensor-actuator nodes */
-    {{0xf3,
-      0x8b}}, /* Firefly node 18 will be one of our sensor-actuator nodes */
-    {{0xF3,
-      0x88}}, /* Firefly node 22 will be one of our sensor-actuator nodes */
-    {{0xF7,
-      0xE1}} /* Firefly node 30 will be one of our sensor-actuator nodes */
+linkaddr_t etc_sensors[NUM_SENSORS] = {
+    {{0xF3, 0x84}}, /* Firefly node 3 */
+    {{0xF2, 0x33}}, /* Firefly node 12 */
+    {{0xf3, 0x8b}}, /* Firefly node 18 */
+    {{0xF3, 0x88}}, /* Firefly node 22*/
+    {{0xF7, 0xE1}}  /* Firefly node 30 */
 };
 #else
-linkaddr_t etc_controller = {
-    {0x01, 0x00}}; /* Sky node 1 will be our etc_controller */
+linkaddr_t etc_controller = {{0x01, 0x00}}; /* Sky node 1 */
 #define NUM_SENSORS 5
-linkaddr_t etc_sensors[] = {{{0x02, 0x00}},
-                            {{0x03, 0x00}},
-                            {{0x04, 0x00}},
-                            {{0x05, 0x00}},
-                            {{0x06, 0x00}}};
+linkaddr_t etc_sensors[NUM_SENSORS] = {{{0x02, 0x00}},
+                                       {{0x03, 0x00}},
+                                       {{0x04, 0x00}},
+                                       {{0x05, 0x00}},
+                                       {{0x06, 0x00}}};
 #endif
 /*---------------------------------------------------------------------------*/
 PROCESS(app_process, "App process");
