@@ -54,7 +54,8 @@ node_role_t role() {
     return NODE_ROLE_CONTROLLER;
   }
   // Sensor/Actuator
-  for (uint i = 0; i < NUM_SENSORS; i++) {
+  uint i;
+  for (i = 0; i < NUM_SENSORS; i++) {
     if (linkaddr_cmp(&etc_sensors[i], &linkaddr_node_addr)) {
       return NODE_ROLE_SENSOR_ACTUATOR;
     }
@@ -117,7 +118,8 @@ PROCESS_THREAD(app_process, ev, data) {
         cb.com_cb = NULL;
 
         // Sensor structure
-        for (uint i = 0; i < NUM_SENSORS; ++i) {
+        uint i;
+        for (i = 0; i < NUM_SENSORS; ++i) {
           linkaddr_copy(&sensor_readings[i].addr, &etc_sensors[i]);
           sensor_readings[i].reading_available = false;
           sensor_readings[i].threshold = CONTROLLER_MAX_DIFF;
@@ -136,9 +138,8 @@ PROCESS_THREAD(app_process, ev, data) {
 
         // Initialize sensed data and threshold
         uint sensor_index;
-        for (uint i = 0; i < NUM_SENSORS; i++) {
-          if (linkaddr_cmp(&etc_sensors[i], &linkaddr_node_addr)) {
-            sensor_index = i;
+        for (sensor_index = 0; sensor_index < NUM_SENSORS; sensor_index++) {
+          if (linkaddr_cmp(&etc_sensors[sensor_index], &linkaddr_node_addr)) {
             break;
           }
         }
