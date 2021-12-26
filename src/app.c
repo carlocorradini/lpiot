@@ -12,19 +12,16 @@
 #include "tools/simple-energest.h"
 
 #define ETC_FIRST_CHANNEL (0xAA)
-
 #define CONTROLLER_COLLECT_WAIT (CLOCK_SECOND * 10)
 
+/* Sensor */
 #define SENSOR_UPDATE_INTERVAL (CLOCK_SECOND * 7)
-
 #define SENSOR_UPDATE_INCREMENT (random_rand() % 300)
-
 #define SENSOR_STARTING_VALUE_STEP (1000)
 
+/* Controller */
 #define CONTROLLER_MAX_DIFF (10000)
-
 #define CONTROLLER_MAX_THRESHOLD (50000)
-
 #define CONTROLLER_CRITICAL_DIFF (15000)
 
 #ifndef CONTIKI_TARGET_SKY
@@ -58,18 +55,16 @@ static void recv_cb(const linkaddr_t *event_source, uint16_t event_seqn,
 static void ev_cb(const linkaddr_t *event_source, uint16_t event_seqn);
 static void com_cb(const linkaddr_t *event_source, uint16_t event_seqn,
                    command_type_t command, uint32_t threshold);
-struct etc_callbacks cb = {.recv_cb = NULL, .ev_cb = NULL, .com_cb = NULL};
-/*---------------------------------------------------------------------------*/
+struct etc_callbacks_t cb = {.recv_cb = NULL, .ev_cb = NULL, .com_cb = NULL};
+
 /* Sensor */
-/*---------------------------------------------------------------------------*/
 static bool is_sensor;
 static uint32_t sensor_value;
 static uint32_t sensor_threshold;
 static struct ctimer sensor_timer;
 static void sensor_timer_cb(void *ptr);
-/*---------------------------------------------------------------------------*/
+
 /* Controller */
-/*---------------------------------------------------------------------------*/
 /* Array for sensor readings */
 typedef struct {
   linkaddr_t addr;
@@ -85,22 +80,21 @@ static uint8_t num_sensor_readings;
 /* Actuation functions */
 static void actuation_logic();
 static void actuation_commands();
-/*---------------------------------------------------------------------------*/
+
 /* Application */
-/*---------------------------------------------------------------------------*/
 PROCESS_THREAD(app_process, ev, data) {
   PROCESS_BEGIN();
   SENSORS_ACTIVATE(button_sensor);
 
-  /* Start energest to estimate node duty cycle */
+  // Start energest to estimate node duty cycle
   simple_energest_start();
 
   printf("App: I am node %02x:%02x\n", linkaddr_node_addr.u8[0],
          linkaddr_node_addr.u8[1]);
 
   while (true) {
-    /* Controller opens connection, then waits events and data
-     * coming with the callback to generate actuation commands */
+    // Controller opens connection, then waits events and data
+    // coming with the callback to generate actuation commands
     if (linkaddr_cmp(&etc_controller, &linkaddr_node_addr)) {
       /* Set callbacks */
       cb.ev_cb = ev_cb;

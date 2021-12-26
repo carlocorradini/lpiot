@@ -34,7 +34,7 @@
 /*---------------------------------------------------------------------------*/
 /* Create connection(s) and start the protocol */
 bool etc_open(struct etc_conn_t *conn, uint16_t channels, node_role_t node_role,
-              const struct etc_callbacks *callbacks, linkaddr_t *sensors,
+              const struct etc_callbacks_t *callbacks, linkaddr_t *sensors,
               uint8_t num_sensors) {
   /* Initialize the connector structure */
 
