@@ -96,12 +96,12 @@ PROCESS_THREAD(app_process, ev, data) {
     // Controller opens connection, then waits events and data
     // coming with the callback to generate actuation commands
     if (linkaddr_cmp(&etc_controller, &linkaddr_node_addr)) {
-      /* Set callbacks */
+      // Set callbacks
       cb.ev_cb = ev_cb;
       cb.recv_cb = recv_cb;
       cb.com_cb = NULL;
 
-      /* Set the sensor structure */
+      // Set the sensor structure
       int i;
       for (i = 0; i < NUM_SENSORS; i++) {
         linkaddr_copy(&sensor_readings[i].addr, &etc_sensors[i]);
@@ -110,33 +110,33 @@ PROCESS_THREAD(app_process, ev, data) {
       }
       num_sensor_readings = 0;
 
-      /* Open connection (builds the tree when started) */
+      // Open connection (builds the tree when started)
       etc_open(&etc_conn, ETC_FIRST_CHANNEL, NODE_ROLE_CONTROLLER, &cb,
                etc_sensors, NUM_SENSORS);
       printf("App: Controller started\n");
     } else {
-      /* Check if the node is a sensor/actuator or a forwarder */
+      // Check if the node is a sensor/actuator or a forwarder
       int i;
       is_sensor = false;
       for (i = 0; i < NUM_SENSORS; i++) {
         if (linkaddr_cmp(&etc_sensors[i], &linkaddr_node_addr)) {
           is_sensor = true;
 
-          /* Initialize sensed data and threshold */
+          // Initialize sensed data and threshold
           sensor_value = SENSOR_STARTING_VALUE_STEP * i;
           sensor_threshold = CONTROLLER_MAX_DIFF;
 
-          /* Set periodic update of the sensed value */
+          // Set periodic update of the sensed value
           ctimer_set(&sensor_timer, SENSOR_UPDATE_INTERVAL, sensor_timer_cb,
                      NULL);
 
-          /* Set callbacks */
+          // Set callbacks
           cb.ev_cb = NULL;
           cb.recv_cb = NULL;
           cb.com_cb = com_cb;
 
-          /* Open connection (only the command callback is set for
-           * sensor/actuators) */
+          // Open connection
+          // Only the command callback is set for sensor/actuators
           etc_open(&etc_conn, ETC_FIRST_CHANNEL, NODE_ROLE_SENSOR_ACTUATOR, &cb,
                    etc_sensors, NUM_SENSORS);
           printf("App: Sensor/actuator started\n");
@@ -144,9 +144,9 @@ PROCESS_THREAD(app_process, ev, data) {
         }
       }
 
-      /* The node is a forwarder */
+      // The node is a forwarder
       if (!is_sensor) {
-        /* Open connection (no callback is set for forwarders) */
+        // Open connection (no callback is set for forwarders)
         etc_open(&etc_conn, ETC_FIRST_CHANNEL, NODE_ROLE_FORWARDER, &cb,
                  etc_sensors, NUM_SENSORS);
         printf("App: Forwarder started\n");
@@ -169,7 +169,7 @@ PROCESS_THREAD(app_process, ev, data) {
 
   PROCESS_END();
 }
-/*---------------------------------------------------------------------------*/
+
 /* Periodic function to update the sensed value (and trigger events) */
 static void sensor_timer_cb(void *ptr) {
   sensor_value += SENSOR_UPDATE_INCREMENT;
@@ -187,7 +187,7 @@ static void sensor_timer_cb(void *ptr) {
   }
   ctimer_set(&sensor_timer, SENSOR_UPDATE_INTERVAL, sensor_timer_cb, NULL);
 }
-/*---------------------------------------------------------------------------*/
+
 /* Data collection reception callback.
  * The controller sets this callback to store the readings of all sensors.
  * When all readings have been collected, the controller can send commands.
@@ -214,7 +214,7 @@ static void recv_cb(const linkaddr_t *event_source, uint16_t event_seqn,
 
   /* If all data was collected, call actuation logic */
 }
-/*---------------------------------------------------------------------------*/
+
 /* Event detection callback;
  * This callback notifies the controller of an ongoing event dissemination.
  * After this notification, the controller waits for sensor readings.
@@ -233,7 +233,7 @@ static void ev_cb(const linkaddr_t *event_source, uint16_t event_seqn) {
 
   /* Wait for sensor readings */
 }
-/*---------------------------------------------------------------------------*/
+
 /* Command reception callback;
  * This callback notifies the sensor/actuator of a command from the controller.
  * In this system, commands can only be of 2 types:
@@ -252,7 +252,7 @@ static void com_cb(const linkaddr_t *event_source, uint16_t event_seqn,
 
   /* Execute commands */
 }
-/*---------------------------------------------------------------------------*/
+
 /* The actuation logic to be called after sensor readings have been collected.
  * This functions checks for the steady state conditions and assigns commands
  * to all sensor/actuators that are violating them.
@@ -331,7 +331,7 @@ void actuation_logic() {
     if (!restart_check) break;
   }
 }
-/*---------------------------------------------------------------------------*/
+
 /* Sends actuations for all sensors with a pending command.
  * actuation_commands() should be called after actuation_logic(), as
  * the logic sets the command for each sensor in their associated structure. */
@@ -349,4 +349,3 @@ void actuation_commands() {
     }
   }
 }
-/*---------------------------------------------------------------------------*/
