@@ -75,7 +75,6 @@ static void com_cb(const linkaddr_t *event_source, uint16_t event_seqn,
 struct etc_callbacks_t cb = {.recv_cb = NULL, .ev_cb = NULL, .com_cb = NULL};
 
 /* Sensor */
-static bool is_sensor;
 static uint32_t sensor_value;
 static uint32_t sensor_threshold;
 static struct ctimer sensor_timer;
@@ -134,8 +133,6 @@ PROCESS_THREAD(app_process, ev, data) {
         break;
       }
       case NODE_ROLE_SENSOR_ACTUATOR: {
-        is_sensor = true;
-
         // Initialize sensed data and threshold
         uint sensor_index;
         for (sensor_index = 0; sensor_index < NUM_SENSORS; sensor_index++) {

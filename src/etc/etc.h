@@ -49,13 +49,17 @@ struct etc_callbacks_t {
 /* Connection object */
 struct etc_conn_t {
   /* Connections */
-  /* ... */
+  struct broadcast_conn bc;
+  struct unicast_conn uc;
+  linkaddr_t parent;
+  uint16_t metric;
+  uint16_t beacon_seqn;
 
   /* Application callbacks */
   const struct etc_callbacks_t *callbacks;
 
   /* Timers */
-  /* ... */
+  struct ctimer beacon_timer;
   // Stop the generation of new events
   struct ctimer suppression_timer;
 
