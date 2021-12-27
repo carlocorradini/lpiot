@@ -8,7 +8,7 @@
                 "${workspaceFolder}/**"
             ],
             "compilerPath": "/usr/bin/msp430-gcc",
-            "cStandard": "c99",
+            "cStandard": "c89",
             "intelliSenseMode": "linux-gcc-arm"
         }
     ]

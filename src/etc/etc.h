@@ -12,11 +12,11 @@
 #define EVENT_FORWARD_DELAY (random_rand() % (CLOCK_SECOND / 10))
 #define COLLECT_START_DELAY \
   (CLOCK_SECOND * 3 + random_rand() % (CLOCK_SECOND * 2))
-// Timeout for new event generation
+/* Timeout for new event generation */
 #define SUPPRESSION_TIMEOUT_NEW (CLOCK_SECOND * 12)
-// Timeout for event repropagation
+/* Timeout for event repropagation */
 #define SUPPRESSION_TIMEOUT_PROP (SUPPRESSION_TIMEOUT_NEW - CLOCK_SECOND / 2)
-// Timeout after a command to disable suppression
+/* Timeout after a command to disable suppression */
 #define SUPPRESSION_TIMEOUT_END (CLOCK_SECOND / 2)
 #define MAX_SENSORS (10)
 #define RSSI_THRESHOLD (-95)
@@ -36,14 +36,15 @@ typedef enum {
 /* Callback structure */
 struct etc_callbacks_t {
   /* Controller callbacks */
-  void (*recv_cb)(const linkaddr_t *event_source, uint16_t event_seqn,
-                  const linkaddr_t *source, uint32_t value, uint32_t threshold);
+  void (*receive_cb)(const linkaddr_t *event_source, uint16_t event_seqn,
+                     const linkaddr_t *source, uint32_t value,
+                     uint32_t threshold);
 
-  void (*ev_cb)(const linkaddr_t *event_source, uint16_t event_seqn);
+  void (*event_cb)(const linkaddr_t *event_source, uint16_t event_seqn);
 
   /* Sensor/actuator callbacks */
-  void (*com_cb)(const linkaddr_t *event_source, uint16_t event_seqn,
-                 command_type_t command, uint32_t threshold);
+  void (*command_cb)(const linkaddr_t *event_source, uint16_t event_seqn,
+                     command_type_t command, uint32_t threshold);
 };
 
 /* Connection object */
@@ -79,7 +80,7 @@ struct etc_conn_t {
  * @brief Initialize a ETC connection.
  *
  * @param conn Pointer to a ETC connection object.
- * @param channels Starting channel C (ETC may use multiple channels).
+ * @param channels Starting channel (ETC may use multiple channels).
  * @param node_role Role of the node (controller, forwarders, sensor/actuator).
  * @param callbacks Pointer to the callback structure.
  * @param sensors Addresses of sensors.

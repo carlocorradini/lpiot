@@ -5,7 +5,7 @@ CONTIKI_PROJECT=app
 # Enable or Disable pedantic checks
 CHECKS?=false
 # - Contiki
-DEFINES=PROJECT_CONF_H=\"src/config.h\"
+DEFINES=PROJECT_CONF_H=\"src/configs/contiki_config.h\"
 CONTIKI_WITH_RIME=1
 CONTIKI?=../../contiki
 ifndef TARGET
@@ -21,11 +21,7 @@ endif
 # - CC
 ifdef CHECKS
 ifeq ($(CHECKS), true)
-# C version
-CFLAGS+=-std=c99
-# Enable 'asm'
-CFLAGS+=-fasm
-# - Warnings
+# Warnings
 CFLAGS+=-Wextra -Wall -pedantic -Wundef \
 		-Wshadow -Wpointer-arith -Wcast-align -Wstrict-prototypes \
 		-Wstrict-overflow=5 -Wwrite-strings -Wwrite-strings -Waggregate-return \
@@ -35,8 +31,8 @@ endif
 endif
 
 # --- SOURCE FILES
-PROJECTDIRS+=src src/etc src/tools
-PROJECT_SOURCEFILES+=etc.c simple-energest.c
+PROJECTDIRS+=src src/configs src/etc src/tools src/nodes/controller src/nodes/forwarder src/nodes/sensor
+PROJECT_SOURCEFILES+=config.c etc.c simple-energest.c controller.c forwarder.c sensor.c
 
 # --- RECIPES
 all: $(CONTIKI_PROJECT)

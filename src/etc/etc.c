@@ -219,8 +219,8 @@ void uc_recv(struct unicast_conn *uc_conn, const linkaddr_t *from) {
       if (packetbuf_hdrreduce(sizeof(struct collect_msg_t))) {
         // FIXME Parametri dal payload
         // Call controller callback function
-        conn->callbacks->recv_cb(&header.event_source, header.event_seqn, NULL,
-                                 7, 7);
+        conn->callbacks->receive_cb(&header.event_source, header.event_seqn,
+                                    NULL, 7, 7);
       } else {
         printf("[ETC]: ERROR, header could not be reduced!");
       }

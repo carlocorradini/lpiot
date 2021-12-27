@@ -1,5 +1,5 @@
-#ifndef _CONFIG_H_
-#define _CONFIG_H_
+#ifndef _CONTIKI_CONFIG_H_
+#define _CONTIKI_CONFIG_H_
 
 /* Change to match your configuration */
 #define IEEE802154_CONF_PANID 0xABCD
@@ -27,7 +27,6 @@
 #define NETSTACK_CONF_MAC csma_driver
 
 #undef NETSTACK_CONF_RDC
-//#define NETSTACK_CONF_RDC	nullrdc_driver
 #define NETSTACK_CONF_RDC contikimac_driver
 
 #endif
