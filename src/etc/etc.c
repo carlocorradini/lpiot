@@ -25,13 +25,14 @@
 /* ... */
 
 /* Declarations for the callbacks of dedicated connection objects */
-void bc_recv(struct broadcast_conn *conn, const linkaddr_t *sender);
-void uc_recv(struct unicast_conn *conn, const linkaddr_t *from);
+void broadcast_recv(struct broadcast_conn *bc_conn, const linkaddr_t *sender);
+void unicast_recv(struct unicast_conn *uc_conn, const linkaddr_t *sender);
 void beacon_timer_cb(void *ptr);
 
 /* Rime Callback structures */
-struct broadcast_callbacks broadcast_cb = {.recv = bc_recv, .sent = NULL};
-struct unicast_callbacks unicast_cb = {.recv = uc_recv, .sent = NULL};
+struct broadcast_callbacks broadcast_cb = {.recv = broadcast_recv,
+                                           .sent = NULL};
+struct unicast_callbacks unicast_cb = {.recv = unicast_recv, .sent = NULL};
 
 /*---------------------------------------------------------------------------*/
 /*                           Application Interface                           */
@@ -39,42 +40,58 @@ struct unicast_callbacks unicast_cb = {.recv = uc_recv, .sent = NULL};
 bool etc_open(struct etc_conn_t *conn, uint16_t channels, node_role_t node_role,
               const struct etc_callbacks_t *callbacks, linkaddr_t *sensors,
               uint8_t num_sensors) {
-  // Initialize connector structure
+  /* Initialize connector structure */
   linkaddr_copy(&conn->parent, &linkaddr_null);
   conn->metric = UINT16_MAX;
   conn->beacon_seqn = 0;
   conn->callbacks = callbacks;
 
-  // Open the underlying Rime primitives
+  /* Open the underlying Rime primitives */
   broadcast_open(&conn->bc, channels, &broadcast_cb);
   unicast_open(&conn->uc, channels + 1, &unicast_cb);
 
   // Initialize sensors forwarding structure
 
-  // Tree construction
+  /* Tree construction */
   if (node_role == NODE_ROLE_CONTROLLER) {
     conn->metric = 0;
-    // Schedule the first beacon message flood
+    /* Schedule the first beacon message flood */
     ctimer_set(&conn->beacon_timer, CLOCK_SECOND, beacon_timer_cb, conn);
   }
 }
 
-/* Turn off the protocol */
+/**
+ * @brief Turn off the protocol
+ *
+ * @param conn Pointer to an ETC connection object.
+ */
 void etc_close(struct etc_conn_t *conn) {
   /* Turn off connections to ignore any incoming packet
    * and stop transmitting */
 }
 
-/* Used by the app to share the most recent sensed value;
- * ONLY USED BY SENSORS */
+/**
+ * @brief Share the most recent sensed value.
+ * Used only by Sensor(s).
+ *
+ * @param value Sensed value.
+ * @param threshold Current threshold.
+ */
 void etc_update(uint32_t value, uint32_t threshold) {
   /* Update local value and threshold, to be sent in case of event */
 }
 
-/* Start event dissemination (unless events are being suppressed to avoid
+/**
+ * @brief Start event dissemination (unless events are suppressed to avoid
  * contention).
- * Returns 0 if new events are currently being suppressed.
- * ONLY USED BY SENSORS */
+ * Used only by Sensor(s).
+ * Returns 0 if new events are currently suppressed.
+ *
+ * @param conn Pointer to an ETC connection object.
+ * @param value Sensed value.
+ * @param threshold Current threshold.
+ * @return int Trigger status
+ */
 int etc_trigger(struct etc_conn_t *conn, uint32_t value, uint32_t threshold) {
   /* Prepare event message */
 
@@ -83,8 +100,16 @@ int etc_trigger(struct etc_conn_t *conn, uint32_t value, uint32_t threshold) {
   /* Send event */
 }
 
-/* Called by the controller to send commands to a given destination.
- * ONLY USED BY CONTROLLER */
+/**
+ * @brief Send command(s) to a given destination node.
+ * Used only by the Controller.
+ *
+ * @param conn Pointer to an ETC connection object.
+ * @param dest Destination node address.
+ * @param command Command to send.
+ * @param threshold New threshold.
+ * @return int Command status
+ */
 int etc_command(struct etc_conn_t *conn, const linkaddr_t *dest,
                 command_type_t command, uint32_t threshold) {
   /* Prepare and send command */
@@ -93,19 +118,25 @@ int etc_command(struct etc_conn_t *conn, const linkaddr_t *dest,
 /*---------------------------------------------------------------------------*/
 /*                              Beacon Handling                              */
 /*---------------------------------------------------------------------------*/
-/* Beacon message structure */
+/**
+ * @brief Beacon message structure
+ */
 struct beacon_msg_t {
   uint16_t seqn;
   uint16_t metric;
 } __attribute__((packed));
 
-/* Send beacon using the current seqn and metric */
+/**
+ * @brief Send beacon using the current seqn and metric.
+ *
+ * @param conn Pointer to an ETC connection object.
+ */
 void send_beacon(const struct etc_conn_t *conn) {
-  // Prepare beacon message
+  /* Prepare beacon message */
   const struct beacon_msg_t message = {.seqn = conn->beacon_seqn,
                                        .metric = conn->metric};
 
-  // Send beacon message in broadcast
+  /* Send beacon message in broadcast */
   packetbuf_clear();
   packetbuf_copyfrom(&message, sizeof(message));
   PRINTF("[ETC]: Sending beacon message: { seqn: %d, metric: %d }\n",
@@ -113,23 +144,33 @@ void send_beacon(const struct etc_conn_t *conn) {
   broadcast_send(&conn->bc);
 }
 
-/* Beacon timer callback */
+/**
+ * @brief Beacon timer callback.
+ *
+ * @param ptr An opaque pointer that will be supplied as an argument to the
+ * callback function.
+ */
 void beacon_timer_cb(void *ptr) {
   struct etc_conn_t *conn = (struct etc_conn_t *)ptr;
   send_beacon(conn);
 
   if (conn->node_role == NODE_ROLE_CONTROLLER) {
-    // Rebuild tree from scratch after beacon interval
+    /* Rebuild tree from scratch after beacon interval */
 
-    // Increase beacon sequence number
+    /* Increase beacon sequence number */
     conn->beacon_seqn += 1;
-    // Schedule next beacon message flood
+    /* Schedule next beacon message flood */
     ctimer_set(&conn->beacon_timer, BEACON_INTERVAL, beacon_timer_cb, conn);
   }
 }
 
-/* Beacon receive callback */
-void bc_recv(struct broadcast_conn *bc_conn, const linkaddr_t *sender) {
+/**
+ * @brief Beacon receive callback.
+ *
+ * @param bc_conn Broadcast connection.
+ * @param sender Address of the sender node.
+ */
+void broadcast_recv(struct broadcast_conn *bc_conn, const linkaddr_t *sender) {
   struct beacon_msg_t message;
   struct etc_conn_t *conn;
   int16_t rssi;
@@ -137,30 +178,30 @@ void bc_recv(struct broadcast_conn *bc_conn, const linkaddr_t *sender) {
   conn = (struct etc_conn_t *)(((uint8_t *)bc_conn) -
                                offsetof(struct etc_conn_t, bc));
 
-  // Check received broadcast packet validity
+  /* Check received broadcast packet validity */
   if (packetbuf_datalen() != sizeof(struct beacon_msg_t)) {
     printf("[ETC]: Broadcast packet of wrong size: %d\n", packetbuf_datalen());
     return;
   }
   memcpy(&message, packetbuf_dataptr(), sizeof(struct beacon_msg_t));
 
-  // Read RSSI of last reception
+  /* Read RSSI of last reception */
   rssi = packetbuf_attr(PACKETBUF_ATTR_RSSI);
   PRINTF(
       "[ETC]: Broadcast recv beacon from %02x:%02x: { seqn: %u, metric: %u, "
       "rssi: %d }\n",
       sender->u8[0], sender->u8[1], beacon.seqn, beacon.metric, rssi);
 
-  // Analyze the received beacon message based on RSSI, seqn, and metric.
+  /* Analyze received beacon message based on RSSI, seqn, and metric */
   if (rssi < RSSI_THRESHOLD || message.seqn < conn->beacon_seqn)
-    return;  // Too weak or too old
+    return; /* Too weak or too old */
   if (message.seqn == conn->beacon_seqn) {
-    // Beacon message not new, check metric
+    /* Beacon message not new, check metric */
     if (message.metric + 1 >= conn->metric)
-      return;  // Worse or equal than stored
+      return; /* Worse or equal than stored */
   }
 
-  // Memorize new parent, metric and seqn
+  /* Memorize new parent, metric and seqn */
   linkaddr_copy(&conn->parent, sender);
   conn->metric = message.metric + 1;
   conn->beacon_seqn = message.seqn;
@@ -174,8 +215,12 @@ void bc_recv(struct broadcast_conn *bc_conn, const linkaddr_t *sender) {
 /*---------------------------------------------------------------------------*/
 /*                               Event Handling                              */
 /*---------------------------------------------------------------------------*/
-/* Event message structure, combining event source (address of the sensor
- * generating the event) and a sequence number. */
+/**
+ * @brief  Event message structure.
+ * Combining event source (address of the sensor
+ * generating the event) and the sequence number.
+ *
+ */
 struct event_msg_t {
   linkaddr_t event_source;
   uint16_t event_seqn;
@@ -184,41 +229,48 @@ struct event_msg_t {
 /*---------------------------------------------------------------------------*/
 /*                               Data Handling                               */
 /*---------------------------------------------------------------------------*/
-/* Header structure for data packets */
+/**
+ * @brief Header structure for data packets.
+ */
 struct collect_msg_t {
   linkaddr_t event_source;
   uint16_t event_seqn;
   uint8_t hops;
 } __attribute__((packed));
 
-/* Data receive callback */
-void uc_recv(struct unicast_conn *uc_conn, const linkaddr_t *from) {
+/**
+ * @brief Data receive callback.
+ *
+ * @param uc_conn Unicast connection.
+ * @param sender Address of the sender node.
+ */
+void unicast_recv(struct unicast_conn *uc_conn, const linkaddr_t *sender) {
   struct etc_conn_t *conn;
   struct collect_msg_t header;
 
   conn = (struct etc_conn_t *)(((uint8_t *)uc_conn) -
                                offsetof(struct etc_conn_t, uc));
 
-  // Check received unicast packet validity
+  /* Check received unicast packet validity */
   if (packetbuf_datalen() < sizeof(struct collect_msg_t)) {
     printf("[ETC]: Unicast packet of wrong size: %d\n", packetbuf_datalen());
     return;
   }
 
-  // Extract header
+  /* Extract header */
   memcpy(&header, packetbuf_dataptr(), sizeof(header));
-  // Update hop count
+  /* Update hop count */
   header.hops = header.hops + 1;
   PRINTF("[ETC]: Data packet rcvd -- source: %02x:%02x, hops: %u\n",
          header.event_source.u8[0], header.event_source.u8[1], header.hops);
 
   switch (conn->node_role) {
     case NODE_ROLE_CONTROLLER: {
-      // Remove header to make packetbuf_dataptr()
-      // point to the beginning of the application payload
+      /* Remove header to make packetbuf_dataptr() point to the beginning of the
+       * application payload */
       if (packetbuf_hdrreduce(sizeof(struct collect_msg_t))) {
-        // FIXME Parametri dal payload
-        // Call controller callback function
+        /* FIXME Parametri dal payload */
+        /* Call controller callback function */
         conn->callbacks->receive_cb(&header.event_source, header.event_seqn,
                                     NULL, 7, 7);
       } else {
@@ -229,7 +281,7 @@ void uc_recv(struct unicast_conn *uc_conn, const linkaddr_t *from) {
     }
     case NODE_ROLE_SENSOR_ACTUATOR:
     case NODE_ROLE_FORWARDER: {
-      // Detect parent node disconnection
+      /* Detect parent node disconnection */
       if (linkaddr_cmp(&conn->parent, &linkaddr_null)) {
         printf(
             "[ETC]: ERROR, unable to forward data packet -- "
@@ -238,9 +290,9 @@ void uc_recv(struct unicast_conn *uc_conn, const linkaddr_t *from) {
         return;
       }
 
-      // Update header in the packet buffer
+      /* Update header in the packet buffer */
       memcpy(packetbuf_dataptr(), &header, sizeof(header));
-      // Send unicast message to parent
+      /* Send unicast message to parent */
       unicast_send(&conn->uc, &conn->parent);
 
       break;
@@ -251,7 +303,9 @@ void uc_recv(struct unicast_conn *uc_conn, const linkaddr_t *from) {
 /*---------------------------------------------------------------------------*/
 /*                               Command Handling                            */
 /*---------------------------------------------------------------------------*/
-/* Header structure for data packets */
+/**
+ * @brief Header structure for command packets.
+ */
 struct command_msg_t {
   linkaddr_t event_source;
   uint16_t event_seqn;

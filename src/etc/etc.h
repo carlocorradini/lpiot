@@ -33,7 +33,9 @@ typedef enum {
   NODE_ROLE_FORWARDER
 } node_role_t;
 
-/* Callback structure */
+/**
+ * @brief Callback structure
+ */
 struct etc_callbacks_t {
   /* Controller callbacks */
   void (*receive_cb)(const linkaddr_t *event_source, uint16_t event_seqn,
@@ -47,7 +49,9 @@ struct etc_callbacks_t {
                      command_type_t command, uint32_t threshold);
 };
 
-/* Connection object */
+/**
+ * @brief Connection object
+ */
 struct etc_conn_t {
   /* Connections */
   struct broadcast_conn bc;
