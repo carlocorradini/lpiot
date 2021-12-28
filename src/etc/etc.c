@@ -127,12 +127,12 @@ static struct beacon_msg_t {
  */
 static void send_beacon_message(const struct etc_conn_t *conn) {
   /* Prepare beacon message */
-  const struct beacon_msg_t message = {.seqn = conn->beacon_seqn,
-                                       .metric = conn->metric};
+  const struct beacon_msg_t beacon_msg = {.seqn = conn->beacon_seqn,
+                                          .metric = conn->metric};
 
   /* Send beacon message in broadcast */
   packetbuf_clear();
-  packetbuf_copyfrom(&message, sizeof(message));
+  packetbuf_copyfrom(&beacon_msg, sizeof(beacon_msg));
   PRINTF("[ETC]: Sending beacon message: { seqn: %d, metric: %d }\n",
          conn->beacon_seqn, conn->metric);
   broadcast_send(&conn->bc);

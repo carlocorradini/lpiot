@@ -86,15 +86,10 @@ static void sensor_timer_cb(void *ptr) {
 
 static void command_cb(const linkaddr_t *event_source, uint16_t event_seqn,
                        command_type_t command, uint32_t threshold) {
-  /* TODO */
-  /* Logging (based on the source and sequence number in the command message
-   * sent by the sink, to guarantee that command transmission and
-   * actuation can be matched by the analysis scripts) */
   printf("[SENSOR]: Actuation [%02x:%02x, %u] %02x:%02x\n", event_source->u8[0],
          event_source->u8[1], event_seqn, linkaddr_node_addr.u8[0],
          linkaddr_node_addr.u8[1]);
 
-  /* FIXME Non so, aspetto email */
   switch (command) {
     case COMMAND_TYPE_NONE: {
       printf("[SENSOR]: Received COMMAND_TYPE_NONE. Ignoring it...\n");
@@ -108,6 +103,7 @@ static void command_cb(const linkaddr_t *event_source, uint16_t event_seqn,
           sensor_value, sensor_threshold, (uint32_t)0,
           (uint32_t)CONTROLLER_MAX_DIFF);
       sensor_value = 0;
+      /* TODO Magari usa il threshold se passato da controller */
       sensor_threshold = CONTROLLER_MAX_DIFF;
       break;
     }
