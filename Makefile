@@ -5,7 +5,7 @@ CONTIKI_PROJECT=app
 # Enable or Disable pedantic checks
 CHECKS?=false
 # - Contiki
-DEFINES=PROJECT_CONF_H=\"src/configs/contiki_config.h\"
+DEFINES=PROJECT_CONF_H=\"src/configs/project_conf.h\"
 CONTIKI_WITH_RIME=1
 CONTIKI?=../../contiki
 ifndef TARGET

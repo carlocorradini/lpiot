@@ -1,5 +1,5 @@
-#ifndef _CONTIKI_CONFIG_H_
-#define _CONTIKI_CONFIG_H_
+#ifndef _PROJECT_CONF_H_
+#define _PROJECT_CONF_H_
 
 /* Change to match your configuration */
 #define IEEE802154_CONF_PANID 0xABCD
