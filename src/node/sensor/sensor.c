@@ -102,18 +102,20 @@ static void command_cb(const linkaddr_t *event_source, uint16_t event_seqn,
     }
     case COMMAND_TYPE_RESET: {
       printf(
-          "[SENSOR]: Received COMMAND_TYPE_RESET. From { value: %d, threshold: "
-          "%d } to { value: %d, threshold: %d }\n",
-          sensor_value, sensor_threshold, 0, CONTROLLER_MAX_DIFF);
+          "[SENSOR]: Received COMMAND_TYPE_RESET. From { value: %lu, "
+          "threshold: "
+          "%lu } to { value: %lu, threshold: %lu }\n",
+          sensor_value, sensor_threshold, (uint32_t)0,
+          (uint32_t)CONTROLLER_MAX_DIFF);
       sensor_value = 0;
       sensor_threshold = CONTROLLER_MAX_DIFF;
       break;
     }
     case COMMAND_TYPE_THRESHOLD: {
       printf(
-          "[SENSOR]: Received COMMAND_TYPE_THRESHOLD. From { value: %d, "
+          "[SENSOR]: Received COMMAND_TYPE_THRESHOLD. From { value: %lu, "
           "threshold: "
-          "%d } to { value: %d, threshold: %d }\n",
+          "%lu } to { value: %lu, threshold: %lu }\n",
           sensor_value, sensor_threshold, sensor_value, threshold);
       sensor_threshold = threshold;
       break;
