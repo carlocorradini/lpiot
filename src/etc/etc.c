@@ -125,7 +125,7 @@ static struct beacon_msg_t {
  *
  * @param conn Pointer to an ETC connection object.
  */
-static void send_beacon(const struct etc_conn_t *conn) {
+static void send_beacon_message(const struct etc_conn_t *conn) {
   /* Prepare beacon message */
   const struct beacon_msg_t message = {.seqn = conn->beacon_seqn,
                                        .metric = conn->metric};
@@ -146,7 +146,7 @@ static void send_beacon(const struct etc_conn_t *conn) {
  */
 static void beacon_timer_cb(void *ptr) {
   struct etc_conn_t *conn = (struct etc_conn_t *)ptr;
-  send_beacon(conn);
+  send_beacon_message(conn);
 
   if (conn->node_role == NODE_ROLE_CONTROLLER) {
     /* Rebuild tree from scratch after beacon interval */
@@ -167,9 +167,9 @@ static void broadcast_recv(struct broadcast_conn *bc_conn,
   conn = (struct etc_conn_t *)(((uint8_t *)bc_conn) -
                                offsetof(struct etc_conn_t, bc));
 
-  /* Check received broadcast packet validity */
+  /* Check received broadcast message validity */
   if (packetbuf_datalen() != sizeof(struct beacon_msg_t)) {
-    printf("[ETC]: Broadcast packet of wrong size: %d\n", packetbuf_datalen());
+    printf("[ETC]: Broadcast message of wrong size: %d\n", packetbuf_datalen());
     return;
   }
   memcpy(&message, packetbuf_dataptr(), sizeof(struct beacon_msg_t));
@@ -177,7 +177,8 @@ static void broadcast_recv(struct broadcast_conn *bc_conn,
   /* Read RSSI of last reception */
   rssi = packetbuf_attr(PACKETBUF_ATTR_RSSI);
   PRINTF(
-      "[ETC]: Broadcast recv beacon from %02x:%02x: { seqn: %u, metric: %u, "
+      "[ETC]: broadcast_recv beacon message from %02x:%02x: { seqn: %u, "
+      "metric: %u, "
       "rssi: %d }\n",
       sender->u8[0], sender->u8[1], beacon.seqn, beacon.metric, rssi);
 
@@ -194,8 +195,8 @@ static void broadcast_recv(struct broadcast_conn *bc_conn,
   linkaddr_copy(&conn->parent, sender);
   conn->metric = message.metric + 1;
   conn->beacon_seqn = message.seqn;
-  PRINTF("[ETC]: New parent %02x:%02x. My metric %d\n", sender->u8[0],
-         sender->u8[1], conn->metric);
+  PRINTF("[ETC]: New parent %02x:%02x. My metric %d\n", conn->paren->u8[0],
+         conn->paren->u8[1], conn->metric);
 
   /* Schedule beacon message propagation */
   ctimer_set(&conn->beacon_timer, ETC_BEACON_FORWARD_DELAY, beacon_timer_cb,
@@ -227,6 +228,39 @@ static struct collect_msg_t {
   uint8_t hops;
 } __attribute__((packed));
 
+/**
+ * @brief Send collect message towards the Controller node.
+ * Returns:
+ *  -1 Node is disconnected (no parent).
+ *  -2 packetbuf_hdralloc(...) error.
+ *  ?  unicast_send(...) return code.
+ *
+ * @param conn Pointer to an ETC connection object.
+ * @return int Status code.
+ */
+static int send_collect_message(struct etc_conn_t *conn) {
+  /* Prepare collect message */
+  struct collect_msg_t message = {.event_source = linkaddr_node_addr,
+                                  .event_seqn = 0,
+                                  /*FIXME SEQUENCE hardcoded!*/ .hops = 0};
+
+  /* Check if node is disconnected (no parent) */
+  if (linkaddr_cmp(&conn->parent, &linkaddr_null)) return -1;
+
+  /* Check if header could be extended */
+  if (!packetbuf_hdralloc(sizeof(struct collect_msg_t))) return -2;
+
+  /* Insert header in the packet buffer */
+  memcpy(packetbuf_hdrptr(), &message, sizeof(message));
+
+  /* TODO Finish better */
+  PRINTF("[ETC]: Sending collect message to %02x:%02x: { }\n",
+         onn->paren->u8[0], conn->paren->u8[1]);
+
+  /* Send packet to parent node */
+  return unicast_send(&conn->uc, &conn->parent);
+}
+
 static void unicast_recv(struct unicast_conn *uc_conn,
                          const linkaddr_t *sender) {
   struct etc_conn_t *conn;
@@ -235,9 +269,9 @@ static void unicast_recv(struct unicast_conn *uc_conn,
   conn = (struct etc_conn_t *)(((uint8_t *)uc_conn) -
                                offsetof(struct etc_conn_t, uc));
 
-  /* Check received unicast packet validity */
+  /* Check received unicast message validity */
   if (packetbuf_datalen() < sizeof(struct collect_msg_t)) {
-    printf("[ETC]: Unicast packet of wrong size: %d\n", packetbuf_datalen());
+    printf("[ETC]: Unicast message of wrong size: %d\n", packetbuf_datalen());
     return;
   }
 
@@ -250,8 +284,8 @@ static void unicast_recv(struct unicast_conn *uc_conn,
 
   switch (conn->node_role) {
     case NODE_ROLE_CONTROLLER: {
-      /* Remove header to make packetbuf_dataptr() point to the beginning of the
-       * application payload */
+      /* Remove header to make packetbuf_dataptr() point to the beginning of
+       * the application payload */
       if (packetbuf_hdrreduce(sizeof(struct collect_msg_t))) {
         /* FIXME Parametri dal payload */
         /* Call controller callback function */
@@ -285,7 +319,7 @@ static void unicast_recv(struct unicast_conn *uc_conn,
 }
 
 /*---------------------------------------------------------------------------*/
-/*                               Command Handling                            */
+/*                               Command Handling */
 /*---------------------------------------------------------------------------*/
 /**
  * @brief Header structure for command packets.
