@@ -1,6 +1,6 @@
 #include "forwarder.h"
 
-#include "configs/config.h"
+#include "config/config.h"
 
 /**
  * @brief Connection.

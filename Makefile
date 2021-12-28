@@ -5,7 +5,7 @@ CONTIKI_PROJECT=app
 # Enable or Disable pedantic checks
 CHECKS?=false
 # - Contiki
-DEFINES=PROJECT_CONF_H=\"src/configs/project_conf.h\"
+DEFINES=PROJECT_CONF_H=\"src/config/project_conf.h\"
 CONTIKI_WITH_RIME=1
 CONTIKI?=../../contiki
 ifndef TARGET
@@ -31,7 +31,7 @@ endif
 endif
 
 # --- SOURCE FILES
-PROJECTDIRS+=src src/configs src/etc src/tools src/nodes/controller src/nodes/forwarder src/nodes/sensor
+PROJECTDIRS+=src src/config src/etc src/tools src/nodes/controller src/nodes/forwarder src/nodes/sensor
 PROJECT_SOURCEFILES+=config.c etc.c simple-energest.c controller.c forwarder.c sensor.c
 
 # --- RECIPES

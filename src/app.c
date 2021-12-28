@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#include "configs/config.h"
+#include "config/config.h"
 #include "nodes/controller/controller.h"
 #include "nodes/forwarder/forwarder.h"
 #include "nodes/sensor/sensor.h"

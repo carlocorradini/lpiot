@@ -2,7 +2,7 @@
 
 #include <stdio.h>
 
-#include "configs/config.h"
+#include "config/config.h"
 
 /**
  * @brief Sensor reading.
