@@ -1,5 +1,6 @@
-#include <dev/button-sensor.h>
-#include <leds.h>
+#include <core/dev/button-sensor.h>
+#include <core/dev/leds.h>
+#include <core/net/netstack.h>
 #include <stdbool.h>
 #include <stdio.h>
 

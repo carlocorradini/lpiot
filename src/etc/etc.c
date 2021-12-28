@@ -18,21 +18,51 @@
 #define PRINTF(...)
 #endif
 
-/* Topology information (parents, metrics...) */
+/* --- Topology information (parents, metrics...) */
 /* ... */
 
-/* Forwarders (routes to sensors/actuators) */
+/* --- Forwarders (routes to sensors/actuators) */
 /* ... */
 
-/* Declarations for the callbacks of dedicated connection objects */
-void broadcast_recv(struct broadcast_conn *bc_conn, const linkaddr_t *sender);
-void unicast_recv(struct unicast_conn *uc_conn, const linkaddr_t *sender);
-void beacon_timer_cb(void *ptr);
+/* --- Declarations for the callbacks of dedicated connection objects */
+/**
+ * @brief Beacon receive callback.
+ *
+ * @param bc_conn Broadcast connection.
+ * @param sender Address of the sender node.
+ */
+static void broadcast_recv(struct broadcast_conn *bc_conn,
+                           const linkaddr_t *sender);
 
-/* Rime Callback structures */
-struct broadcast_callbacks broadcast_cb = {.recv = broadcast_recv,
-                                           .sent = NULL};
-struct unicast_callbacks unicast_cb = {.recv = unicast_recv, .sent = NULL};
+/**
+ * @brief Data receive callback.
+ *
+ * @param uc_conn Unicast connection.
+ * @param sender Address of the sender node.
+ */
+static void unicast_recv(struct unicast_conn *uc_conn,
+                         const linkaddr_t *sender);
+
+/**
+ * @brief Beacon timer callback.
+ *
+ * @param ptr An opaque pointer that will be supplied as an argument to the
+ * callback function.
+ */
+static void beacon_timer_cb(void *ptr);
+
+/* --- Rime Callback structures */
+/**
+ * @brief Callback structure for broadcast.
+ */
+static struct broadcast_callbacks broadcast_cb = {.recv = broadcast_recv,
+                                                  .sent = NULL};
+
+/**
+ * @brief Callback structure for unicast.
+ */
+static struct unicast_callbacks unicast_cb = {.recv = unicast_recv,
+                                              .sent = NULL};
 
 /*---------------------------------------------------------------------------*/
 /*                           Application Interface                           */
@@ -50,7 +80,7 @@ bool etc_open(struct etc_conn_t *conn, uint16_t channels, node_role_t node_role,
   broadcast_open(&conn->bc, channels, &broadcast_cb);
   unicast_open(&conn->uc, channels + 1, &unicast_cb);
 
-  // Initialize sensors forwarding structure
+  /* Initialize sensors forwarding structure */
 
   /* Tree construction */
   if (node_role == NODE_ROLE_CONTROLLER) {
@@ -88,9 +118,9 @@ int etc_trigger(struct etc_conn_t *conn, uint32_t value, uint32_t threshold) {
 /*                              Beacon Handling                              */
 /*---------------------------------------------------------------------------*/
 /**
- * @brief Beacon message structure
+ * @brief Beacon message structure.
  */
-struct beacon_msg_t {
+static struct beacon_msg_t {
   uint16_t seqn;
   uint16_t metric;
 } __attribute__((packed));
@@ -100,7 +130,7 @@ struct beacon_msg_t {
  *
  * @param conn Pointer to an ETC connection object.
  */
-void send_beacon(const struct etc_conn_t *conn) {
+static void send_beacon(const struct etc_conn_t *conn) {
   /* Prepare beacon message */
   const struct beacon_msg_t message = {.seqn = conn->beacon_seqn,
                                        .metric = conn->metric};
@@ -119,7 +149,7 @@ void send_beacon(const struct etc_conn_t *conn) {
  * @param ptr An opaque pointer that will be supplied as an argument to the
  * callback function.
  */
-void beacon_timer_cb(void *ptr) {
+static void beacon_timer_cb(void *ptr) {
   struct etc_conn_t *conn = (struct etc_conn_t *)ptr;
   send_beacon(conn);
 
@@ -133,13 +163,8 @@ void beacon_timer_cb(void *ptr) {
   }
 }
 
-/**
- * @brief Beacon receive callback.
- *
- * @param bc_conn Broadcast connection.
- * @param sender Address of the sender node.
- */
-void broadcast_recv(struct broadcast_conn *bc_conn, const linkaddr_t *sender) {
+static void broadcast_recv(struct broadcast_conn *bc_conn,
+                           const linkaddr_t *sender) {
   struct beacon_msg_t message;
   struct etc_conn_t *conn;
   int16_t rssi;
@@ -188,9 +213,8 @@ void broadcast_recv(struct broadcast_conn *bc_conn, const linkaddr_t *sender) {
  * @brief  Event message structure.
  * Combining event source (address of the sensor
  * generating the event) and the sequence number.
- *
  */
-struct event_msg_t {
+static struct event_msg_t {
   linkaddr_t event_source;
   uint16_t event_seqn;
 } __attribute__((packed));
@@ -201,19 +225,14 @@ struct event_msg_t {
 /**
  * @brief Header structure for data packets.
  */
-struct collect_msg_t {
+static struct collect_msg_t {
   linkaddr_t event_source;
   uint16_t event_seqn;
   uint8_t hops;
 } __attribute__((packed));
 
-/**
- * @brief Data receive callback.
- *
- * @param uc_conn Unicast connection.
- * @param sender Address of the sender node.
- */
-void unicast_recv(struct unicast_conn *uc_conn, const linkaddr_t *sender) {
+static void unicast_recv(struct unicast_conn *uc_conn,
+                         const linkaddr_t *sender) {
   struct etc_conn_t *conn;
   struct collect_msg_t header;
 
@@ -275,7 +294,7 @@ void unicast_recv(struct unicast_conn *uc_conn, const linkaddr_t *sender) {
 /**
  * @brief Header structure for command packets.
  */
-struct command_msg_t {
+static struct command_msg_t {
   linkaddr_t event_source;
   uint16_t event_seqn;
   /* ... */
