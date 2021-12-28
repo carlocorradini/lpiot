@@ -31,7 +31,7 @@ endif
 endif
 
 # --- SOURCE FILES
-PROJECTDIRS+=src src/config src/etc src/tools src/nodes/controller src/nodes/forwarder src/nodes/sensor
+PROJECTDIRS+=src src/config src/etc src/tool src/node/controller src/node/forwarder src/node/sensor
 PROJECT_SOURCEFILES+=config.c etc.c simple-energest.c controller.c forwarder.c sensor.c
 
 # --- RECIPES

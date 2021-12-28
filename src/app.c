@@ -5,10 +5,10 @@
 #include <stdio.h>
 
 #include "config/config.h"
-#include "nodes/controller/controller.h"
-#include "nodes/forwarder/forwarder.h"
-#include "nodes/sensor/sensor.h"
-#include "tools/simple-energest.h"
+#include "node/controller/controller.h"
+#include "node/forwarder/forwarder.h"
+#include "node/sensor/sensor.h"
+#include "tool/simple-energest.h"
 
 /**
  * @brief Connection.
