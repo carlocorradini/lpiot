@@ -68,13 +68,14 @@ static struct unicast_callbacks unicast_cb = {.recv = unicast_recv,
 /*                           Application Interface                           */
 /*---------------------------------------------------------------------------*/
 bool etc_open(struct etc_conn_t *conn, uint16_t channels, node_role_t node_role,
-              const struct etc_callbacks_t *callbacks, linkaddr_t *sensors,
-              uint8_t num_sensors) {
+              const struct etc_callbacks_t *callbacks,
+              const linkaddr_t *sensors, uint8_t num_sensors) {
   /* Initialize connector structure */
   linkaddr_copy(&conn->parent, &linkaddr_null);
   conn->metric = UINT16_MAX;
   conn->beacon_seqn = 0;
   conn->callbacks = callbacks;
+  conn->node_role = node_role;
 
   /* Open the underlying Rime primitives */
   broadcast_open(&conn->bc, channels, &broadcast_cb);
@@ -83,7 +84,7 @@ bool etc_open(struct etc_conn_t *conn, uint16_t channels, node_role_t node_role,
   /* Initialize sensors forwarding structure */
 
   /* Tree construction */
-  if (node_role == NODE_ROLE_CONTROLLER) {
+  if (conn->node_role == NODE_ROLE_CONTROLLER) {
     conn->metric = 0;
     /* Schedule the first beacon message flood */
     ctimer_set(&conn->beacon_timer, CLOCK_SECOND, beacon_timer_cb, conn);

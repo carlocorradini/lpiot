@@ -47,7 +47,7 @@ static struct etc_conn_t *etc_conn = NULL;
 /**
  * @brief Callbacks.
  */
-static struct etc_callbacks_t cb = {
+static const struct etc_callbacks_t cb = {
     .receive_cb = NULL, .event_cb = NULL, .command_cb = command_cb};
 
 void sensor_init(struct etc_conn_t *conn, uint sensor_index) {

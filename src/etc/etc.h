@@ -147,8 +147,8 @@ struct etc_conn_t {
  * @return false ETC connection failed.
  */
 bool etc_open(struct etc_conn_t *conn, uint16_t channels, node_role_t node_role,
-              const struct etc_callbacks_t *callbacks, linkaddr_t *sensors,
-              uint8_t num_sensors);
+              const struct etc_callbacks_t *callbacks,
+              const linkaddr_t *sensors, uint8_t num_sensors);
 
 /**
  * @brief Terminate an ETC connection.

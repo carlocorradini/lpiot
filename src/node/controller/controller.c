@@ -86,7 +86,7 @@ static struct etc_conn_t *etc_conn = NULL;
 /**
  * @brief Callbacks.
  */
-static struct etc_callbacks_t cb = {
+static const struct etc_callbacks_t cb = {
     .receive_cb = receive_cb, .event_cb = event_cb, .command_cb = NULL};
 
 void controller_init(struct etc_conn_t *conn) {
