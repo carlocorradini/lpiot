@@ -60,59 +60,28 @@ bool etc_open(struct etc_conn_t *conn, uint16_t channels, node_role_t node_role,
   }
 }
 
-/**
- * @brief Turn off the protocol
- *
- * @param conn Pointer to an ETC connection object.
- */
 void etc_close(struct etc_conn_t *conn) {
   /* Turn off connections to ignore any incoming packet
    * and stop transmitting */
 }
 
-/**
- * @brief Share the most recent sensed value.
- * Used only by Sensor(s).
- *
- * @param value Sensed value.
- * @param threshold Current threshold.
- */
+/* --- CONTROLLER--- */
+int etc_command(struct etc_conn_t *conn, const linkaddr_t *dest,
+                command_type_t command, uint32_t threshold) {
+  /* Prepare and send command */
+}
+
+/* --- SENSOR --- */
 void etc_update(uint32_t value, uint32_t threshold) {
   /* Update local value and threshold, to be sent in case of event */
 }
 
-/**
- * @brief Start event dissemination (unless events are suppressed to avoid
- * contention).
- * Used only by Sensor(s).
- * Returns 0 if new events are currently suppressed.
- *
- * @param conn Pointer to an ETC connection object.
- * @param value Sensed value.
- * @param threshold Current threshold.
- * @return int Trigger status
- */
 int etc_trigger(struct etc_conn_t *conn, uint32_t value, uint32_t threshold) {
   /* Prepare event message */
 
   /* Suppress other events for a given time window */
 
   /* Send event */
-}
-
-/**
- * @brief Send command(s) to a given destination node.
- * Used only by the Controller.
- *
- * @param conn Pointer to an ETC connection object.
- * @param dest Destination node address.
- * @param command Command to send.
- * @param threshold New threshold.
- * @return int Command status
- */
-int etc_command(struct etc_conn_t *conn, const linkaddr_t *dest,
-                command_type_t command, uint32_t threshold) {
-  /* Prepare and send command */
 }
 
 /*---------------------------------------------------------------------------*/
