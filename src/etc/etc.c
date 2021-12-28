@@ -71,11 +71,11 @@ bool etc_open(struct etc_conn_t *conn, uint16_t channels, node_role_t node_role,
   conn->callbacks = callbacks;
   conn->node_role = node_role;
 
+  /* Initialize sensors forwarding structure */
+
   /* Open the underlying Rime primitives */
   broadcast_open(&conn->bc, channels, &broadcast_cb);
   unicast_open(&conn->uc, channels + 1, &unicast_cb);
-
-  /* Initialize sensors forwarding structure */
 
   /* Tree construction */
   if (conn->node_role == NODE_ROLE_CONTROLLER) {
