@@ -1,15 +1,57 @@
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
 
-#include <core/net/linkaddr.h>
-#include <core/sys/clock.h>
 #include <lib/random.h>
+#include <net/linkaddr.h>
+#include <sys/clock.h>
 
 /* --- ETC --- */
 /**
  * @brief Starting channel (ETC may use multiple channels).
  */
 #define ETC_FIRST_CHANNEL (0xAA)
+
+/**
+ * @brief Interval to (re)create the connections tree.
+ * Valid only if the node is a Controller.
+ */
+#define ETC_BEACON_INTERVAL (CLOCK_SECOND * 30)
+
+/**
+ * @brief Time to wait before sending a beacon message.
+ */
+#define ETC_BEACON_FORWARD_DELAY (random_rand() % CLOCK_SECOND)
+
+/**
+ * @brief Time to wait before sending an event message.
+ */
+#define ETC_EVENT_FORWARD_DELAY (random_rand() % (CLOCK_SECOND / 10))
+
+/**
+ * @brief Time to wait before sending a collect message.
+ */
+#define ETC_COLLECT_START_DELAY \
+  (CLOCK_SECOND * 3 + random_rand() % (CLOCK_SECOND * 2))
+
+/**
+ * @brief Timeout for new event generation.
+ */
+#define SUPPRESSION_TIMEOUT_NEW (CLOCK_SECOND * 12)
+
+/**
+ * @brief Timeout for event repropagation.
+ */
+#define SUPPRESSION_TIMEOUT_PROP (SUPPRESSION_TIMEOUT_NEW - CLOCK_SECOND / 2)
+
+/**
+ * @brief Timeout after a command to disable suppression.
+ */
+#define ETC_SUPPRESSION_TIMEOUT_END (CLOCK_SECOND / 2)
+
+/**
+ * @brief RSSI threshold.
+ */
+#define ETC_RSSI_THRESHOLD (-95)
 
 /* --- CONTROLLER --- */
 /**

@@ -1,23 +1,9 @@
 #ifndef _ETC_H_
 #define _ETC_H_
 
-#include <core/net/linkaddr.h>
-#include <core/net/rime/rime.h>
+#include <net/linkaddr.h>
+#include <net/rime/rime.h>
 #include <stdbool.h>
-
-#define BEACON_INTERVAL (CLOCK_SECOND * 30)
-#define BEACON_FORWARD_DELAY (random_rand() % CLOCK_SECOND)
-#define EVENT_FORWARD_DELAY (random_rand() % (CLOCK_SECOND / 10))
-#define COLLECT_START_DELAY \
-  (CLOCK_SECOND * 3 + random_rand() % (CLOCK_SECOND * 2))
-/* Timeout for new event generation */
-#define SUPPRESSION_TIMEOUT_NEW (CLOCK_SECOND * 12)
-/* Timeout for event repropagation */
-#define SUPPRESSION_TIMEOUT_PROP (SUPPRESSION_TIMEOUT_NEW - CLOCK_SECOND / 2)
-/* Timeout after a command to disable suppression */
-#define SUPPRESSION_TIMEOUT_END (CLOCK_SECOND / 2)
-#define MAX_SENSORS (10)
-#define RSSI_THRESHOLD (-95)
 
 /**
  * @brief Command types.

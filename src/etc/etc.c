@@ -1,14 +1,8 @@
 #include "etc.h"
 
-#include <stdbool.h>
 #include <stdio.h>
 
-#include "contiki.h"
-#include "core/net/linkaddr.h"
-#include "leds.h"
-#include "lib/random.h"
-#include "net/netstack.h"
-#include "net/rime/rime.h"
+#include "config/config.h"
 
 /* A simple debug system to enable/disable some printfs */
 #define DEBUG 0
@@ -160,7 +154,7 @@ static void beacon_timer_cb(void *ptr) {
     /* Increase beacon sequence number */
     conn->beacon_seqn += 1;
     /* Schedule next beacon message flood */
-    ctimer_set(&conn->beacon_timer, BEACON_INTERVAL, beacon_timer_cb, conn);
+    ctimer_set(&conn->beacon_timer, ETC_BEACON_INTERVAL, beacon_timer_cb, conn);
   }
 }
 
@@ -188,7 +182,7 @@ static void broadcast_recv(struct broadcast_conn *bc_conn,
       sender->u8[0], sender->u8[1], beacon.seqn, beacon.metric, rssi);
 
   /* Analyze received beacon message based on RSSI, seqn, and metric */
-  if (rssi < RSSI_THRESHOLD || message.seqn < conn->beacon_seqn)
+  if (rssi < ETC_RSSI_THRESHOLD || message.seqn < conn->beacon_seqn)
     return; /* Too weak or too old */
   if (message.seqn == conn->beacon_seqn) {
     /* Beacon message not new, check metric */
@@ -204,7 +198,8 @@ static void broadcast_recv(struct broadcast_conn *bc_conn,
          sender->u8[1], conn->metric);
 
   /* Schedule beacon message propagation */
-  ctimer_set(&conn->beacon_timer, BEACON_FORWARD_DELAY, beacon_timer_cb, conn);
+  ctimer_set(&conn->beacon_timer, ETC_BEACON_FORWARD_DELAY, beacon_timer_cb,
+             conn);
 }
 
 /*---------------------------------------------------------------------------*/
