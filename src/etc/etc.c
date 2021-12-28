@@ -3,6 +3,7 @@
 #include <stdio.h>
 
 #include "config/config.h"
+#include "connection/beacon/beacon.h"
 
 /* A simple debug system to enable/disable some printfs */
 #define DEBUG 0
@@ -20,15 +21,6 @@
 
 /* --- Declarations for the callbacks of dedicated connection objects */
 /**
- * @brief Beacon receive callback.
- *
- * @param bc_conn Broadcast connection.
- * @param sender Address of the sender node.
- */
-static void broadcast_recv(struct broadcast_conn *bc_conn,
-                           const linkaddr_t *sender);
-
-/**
  * @brief Data receive callback.
  *
  * @param uc_conn Unicast connection.
@@ -37,20 +29,7 @@ static void broadcast_recv(struct broadcast_conn *bc_conn,
 static void unicast_recv(struct unicast_conn *uc_conn,
                          const linkaddr_t *sender);
 
-/**
- * @brief Beacon timer callback.
- *
- * @param ptr An opaque pointer that will be supplied as an argument to the
- * callback function.
- */
-static void beacon_timer_cb(void *ptr);
-
 /* --- Rime Callback structures */
-/**
- * @brief Callback structure for broadcast.
- */
-static struct broadcast_callbacks broadcast_cb = {.recv = broadcast_recv,
-                                                  .sent = NULL};
 
 /**
  * @brief Callback structure for unicast.
@@ -74,15 +53,8 @@ bool etc_open(struct etc_conn_t *conn, uint16_t channels, node_role_t node_role,
   /* Initialize sensors forwarding structure */
 
   /* Open the underlying Rime primitives */
-  broadcast_open(&conn->bc, channels, &broadcast_cb);
+  beacon_init(conn, channels);
   unicast_open(&conn->uc, channels + 1, &unicast_cb);
-
-  /* Tree construction */
-  if (conn->node_role == NODE_ROLE_CONTROLLER) {
-    conn->metric = 0;
-    /* Schedule the first beacon message flood */
-    ctimer_set(&conn->beacon_timer, CLOCK_SECOND, beacon_timer_cb, conn);
-  }
 }
 
 void etc_close(struct etc_conn_t *conn) {
@@ -107,100 +79,6 @@ int etc_trigger(struct etc_conn_t *conn, uint32_t value, uint32_t threshold) {
   /* Suppress other events for a given time window */
 
   /* Send event */
-}
-
-/*---------------------------------------------------------------------------*/
-/*                              Beacon Handling                              */
-/*---------------------------------------------------------------------------*/
-/**
- * @brief Beacon message structure.
- */
-static struct beacon_msg_t {
-  uint16_t seqn;
-  uint16_t metric;
-} __attribute__((packed));
-
-/**
- * @brief Send beacon using the current seqn and metric.
- *
- * @param conn Pointer to an ETC connection object.
- */
-static void send_beacon_message(const struct etc_conn_t *conn) {
-  /* Prepare beacon message */
-  const struct beacon_msg_t beacon_msg = {.seqn = conn->beacon_seqn,
-                                          .metric = conn->metric};
-
-  /* Send beacon message in broadcast */
-  packetbuf_clear();
-  packetbuf_copyfrom(&beacon_msg, sizeof(beacon_msg));
-  PRINTF("[ETC]: Sending beacon message: { seqn: %d, metric: %d }\n",
-         conn->beacon_seqn, conn->metric);
-  broadcast_send(&conn->bc);
-}
-
-/**
- * @brief Beacon timer callback.
- *
- * @param ptr An opaque pointer that will be supplied as an argument to the
- * callback function.
- */
-static void beacon_timer_cb(void *ptr) {
-  struct etc_conn_t *conn = (struct etc_conn_t *)ptr;
-  send_beacon_message(conn);
-
-  if (conn->node_role == NODE_ROLE_CONTROLLER) {
-    /* Rebuild tree from scratch after beacon interval */
-
-    /* Increase beacon sequence number */
-    conn->beacon_seqn += 1;
-    /* Schedule next beacon message flood */
-    ctimer_set(&conn->beacon_timer, ETC_BEACON_INTERVAL, beacon_timer_cb, conn);
-  }
-}
-
-static void broadcast_recv(struct broadcast_conn *bc_conn,
-                           const linkaddr_t *sender) {
-  struct beacon_msg_t message;
-  struct etc_conn_t *conn;
-  int16_t rssi;
-
-  conn = (struct etc_conn_t *)(((uint8_t *)bc_conn) -
-                               offsetof(struct etc_conn_t, bc));
-
-  /* Check received broadcast message validity */
-  if (packetbuf_datalen() != sizeof(struct beacon_msg_t)) {
-    printf("[ETC]: Broadcast message of wrong size: %d\n", packetbuf_datalen());
-    return;
-  }
-  memcpy(&message, packetbuf_dataptr(), sizeof(struct beacon_msg_t));
-
-  /* Read RSSI of last reception */
-  rssi = packetbuf_attr(PACKETBUF_ATTR_RSSI);
-  PRINTF(
-      "[ETC]: broadcast_recv beacon message from %02x:%02x: { seqn: %u, "
-      "metric: %u, "
-      "rssi: %d }\n",
-      sender->u8[0], sender->u8[1], beacon.seqn, beacon.metric, rssi);
-
-  /* Analyze received beacon message based on RSSI, seqn, and metric */
-  if (rssi < ETC_RSSI_THRESHOLD || message.seqn < conn->beacon_seqn)
-    return; /* Too weak or too old */
-  if (message.seqn == conn->beacon_seqn) {
-    /* Beacon message not new, check metric */
-    if (message.metric + 1 >= conn->metric)
-      return; /* Worse or equal than stored */
-  }
-
-  /* Memorize new parent, metric and seqn */
-  linkaddr_copy(&conn->parent, sender);
-  conn->metric = message.metric + 1;
-  conn->beacon_seqn = message.seqn;
-  PRINTF("[ETC]: New parent %02x:%02x. My metric %d\n", conn->paren->u8[0],
-         conn->paren->u8[1], conn->metric);
-
-  /* Schedule beacon message propagation */
-  ctimer_set(&conn->beacon_timer, ETC_BEACON_FORWARD_DELAY, beacon_timer_cb,
-             conn);
 }
 
 /*---------------------------------------------------------------------------*/
