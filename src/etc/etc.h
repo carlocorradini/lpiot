@@ -92,7 +92,13 @@ struct etc_callbacks_t {
  */
 struct etc_conn_t {
   /* --- Connection(s) */
+  /**
+   * @brief Broadcast connection object.
+   */
   struct broadcast_conn bc;
+  /**
+   * @brief Unicast connection object.
+   */
   struct unicast_conn uc;
   linkaddr_t parent;
   uint16_t metric;
