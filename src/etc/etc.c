@@ -5,14 +5,6 @@
 #include "config/config.h"
 #include "connection/beacon/beacon.h"
 
-/* A simple debug system to enable/disable some printfs */
-#define DEBUG 0
-#if DEBUG
-#define PRINTF(...) printf(__VA_ARGS__)
-#else
-#define PRINTF(...)
-#endif
-
 /* --- Topology information (parents, metrics...) */
 /* ... */
 
@@ -132,8 +124,8 @@ static int send_collect_message(struct etc_conn_t *conn) {
   memcpy(packetbuf_hdrptr(), &message, sizeof(message));
 
   /* TODO Finish better */
-  PRINTF("[ETC]: Sending collect message to %02x:%02x: { }\n",
-         onn->paren->u8[0], conn->paren->u8[1]);
+  printf("[ETC]: Sending collect message to %02x:%02x: { }\n",
+         conn->parent.u8[0], conn->parent.u8[1]);
 
   /* Send packet to parent node */
   return unicast_send(&conn->uc, &conn->parent);
