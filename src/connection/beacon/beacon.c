@@ -126,7 +126,8 @@ static void broadcast_recv_cb(struct broadcast_conn *bc_conn,
 
   /* Check received beacon message validity */
   if (packetbuf_datalen() != sizeof(struct beacon_msg_t)) {
-    printf("Received beacon message has wrong size: %d\n", packetbuf_datalen());
+    printf("Received beacon message with wrong size: %d\n",
+           packetbuf_datalen());
     return;
   }
 
@@ -136,7 +137,7 @@ static void broadcast_recv_cb(struct broadcast_conn *bc_conn,
   /* Read RSSI of last reception */
   rssi = packetbuf_attr(PACKETBUF_ATTR_RSSI);
   printf(
-      "Beacon message from %02x:%02x with rssi %d: "
+      "Received beacon message from %02x:%02x with rssi %d: "
       "{ seqn: %u, hopn: %u}\n",
       sender->u8[0], sender->u8[1], rssi, beacon_msg.seqn, beacon_msg.hopn);
 
@@ -146,7 +147,7 @@ static void broadcast_recv_cb(struct broadcast_conn *bc_conn,
   if (beacon_msg.seqn == connection.seqn) {
     /* Same sequence number, check... */
     if (beacon_msg.hopn + 1 > connection.hopn) return; /* Far */
-    if (beacon_msg.hopn == connection.hopn && rssi > connection.rssi)
+    if (beacon_msg.hopn == connection.hopn && rssi < connection.rssi)
       return; /* Weak */
   }
 
