@@ -31,8 +31,8 @@ endif
 endif
 
 # --- SOURCE FILES
-PROJECTDIRS+=src src/config src/etc src/etc/connection/beacon src/tool src/node/controller src/node/forwarder src/node/sensor
-PROJECT_SOURCEFILES+=config.c etc.c beacon.c simple-energest.c controller.c forwarder.c sensor.c
+PROJECTDIRS+=src src/config src/connection/beacon src/etc src/tool src/node/controller src/node/forwarder src/node/sensor
+PROJECT_SOURCEFILES+=config.c beacon.c etc.c simple-energest.c controller.c forwarder.c sensor.c
 
 # --- RECIPES
 all: $(CONTIKI_PROJECT)

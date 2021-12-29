@@ -36,16 +36,13 @@ bool etc_open(struct etc_conn_t *conn, uint16_t channels, node_role_t node_role,
               const struct etc_callbacks_t *callbacks,
               const linkaddr_t *sensors, uint8_t num_sensors) {
   /* Initialize connector structure */
-  linkaddr_copy(&conn->parent, &linkaddr_null);
-  conn->metric = UINT16_MAX;
-  conn->beacon_seqn = 0;
   conn->callbacks = callbacks;
   conn->node_role = node_role;
 
   /* Initialize sensors forwarding structure */
 
   /* Open the underlying Rime primitives */
-  beacon_init(conn, channels);
+  beacon_init(node_role, channels);
   unicast_open(&conn->uc, channels + 1, &unicast_cb);
 }
 
@@ -113,9 +110,10 @@ static int send_collect_message(struct etc_conn_t *conn) {
   struct collect_msg_t message = {.event_source = linkaddr_node_addr,
                                   .event_seqn = 0,
                                   /*FIXME SEQUENCE hardcoded!*/ .hops = 0};
+  const struct linkaddr_t *parent_node = beacon_connection_info();
 
   /* Check if node is disconnected (no parent) */
-  if (linkaddr_cmp(&conn->parent, &linkaddr_null)) return -1;
+  if (linkaddr_cmp(parent_node, &linkaddr_null)) return -1;
 
   /* Check if header could be extended */
   if (!packetbuf_hdralloc(sizeof(struct collect_msg_t))) return -2;
@@ -124,11 +122,11 @@ static int send_collect_message(struct etc_conn_t *conn) {
   memcpy(packetbuf_hdrptr(), &message, sizeof(message));
 
   /* TODO Finish better */
-  printf("[ETC]: Sending collect message to %02x:%02x: { }\n",
-         conn->parent.u8[0], conn->parent.u8[1]);
+  /*printf("[ETC]: Sending collect message to %02x:%02x\n", parent_node->u8[0],
+         parent_node.u8[1]);*/
 
   /* Send packet to parent node */
-  return unicast_send(&conn->uc, &conn->parent);
+  return unicast_send(&conn->uc, parent_node);
 }
 
 static void unicast_recv(struct unicast_conn *uc_conn,
@@ -149,7 +147,7 @@ static void unicast_recv(struct unicast_conn *uc_conn,
   memcpy(&header, packetbuf_dataptr(), sizeof(header));
   /* Update hop count */
   header.hops = header.hops + 1;
-  PRINTF("[ETC]: Data packet rcvd -- source: %02x:%02x, hops: %u\n",
+  printf("[ETC]: Data packet rcvd -- source: %02x:%02x, hops: %u\n",
          header.event_source.u8[0], header.event_source.u8[1], header.hops);
 
   switch (conn->node_role) {
@@ -169,8 +167,10 @@ static void unicast_recv(struct unicast_conn *uc_conn,
     }
     case NODE_ROLE_SENSOR_ACTUATOR:
     case NODE_ROLE_FORWARDER: {
+      const struct linkaddr_t *parent_node = beacon_connection_info();
+
       /* Detect parent node disconnection */
-      if (linkaddr_cmp(&conn->parent, &linkaddr_null)) {
+      if (linkaddr_cmp(parent_node, &linkaddr_null)) {
         printf(
             "[ETC]: ERROR, unable to forward data packet -- "
             "source: %02x:%02x, hops: %u\n",
@@ -181,7 +181,7 @@ static void unicast_recv(struct unicast_conn *uc_conn,
       /* Update header in the packet buffer */
       memcpy(packetbuf_dataptr(), &header, sizeof(header));
       /* Send unicast message to parent */
-      unicast_send(&conn->uc, &conn->parent);
+      unicast_send(&conn->uc, parent_node);
 
       break;
     }

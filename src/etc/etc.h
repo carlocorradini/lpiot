@@ -2,45 +2,11 @@
 #define _ETC_H_
 
 #include <net/linkaddr.h>
-#include <net/rime/rime.h>
+#include <net/rime/unicast.h>
 #include <stdbool.h>
+#include <sys/ctimer.h>
 
-/**
- * @brief Command types.
- */
-typedef enum {
-  /**
-   * @brief Don't do anything (ignore).
-   */
-  COMMAND_TYPE_NONE,
-  /**
-   * @brief Sensed value should go to 0, and the threshold back to normal.
-   */
-  COMMAND_TYPE_RESET,
-  /**
-   * @brief Sensed value should not be modified, but the threshold should be
-   * increased.
-   */
-  COMMAND_TYPE_THRESHOLD
-} command_type_t;
-
-/**
- * @brief Node roles.
- */
-typedef enum {
-  /**
-   * @brief Controller node.
-   */
-  NODE_ROLE_CONTROLLER,
-  /**
-   * @brief Sensor/Actuator node.
-   */
-  NODE_ROLE_SENSOR_ACTUATOR,
-  /**
-   * @brief Forwarder node.
-   */
-  NODE_ROLE_FORWARDER
-} node_role_t;
+#include "node/node.h"
 
 /**
  * @brief Callback structure.
@@ -91,18 +57,10 @@ struct etc_callbacks_t {
  * @brief Connection object.
  */
 struct etc_conn_t {
-  /* --- Connection(s) */
-  /**
-   * @brief Broadcast connection object.
-   */
-  struct broadcast_conn bc;
   /**
    * @brief Unicast connection object.
    */
   struct unicast_conn uc;
-  linkaddr_t parent;
-  uint16_t metric;
-  uint16_t beacon_seqn;
 
   /* --- Callbacks */
   /**
@@ -111,11 +69,6 @@ struct etc_conn_t {
   const struct etc_callbacks_t *callbacks;
 
   /* --- Timer(s) */
-  /**
-   * @brief Beacon message generation timer.
-   */
-  struct ctimer beacon_timer;
-
   /**
    * @brief Stop the generation of new events.
    */
