@@ -55,6 +55,33 @@ static void beacon_timer_cb(void *ptr);
  */
 static void reset_connections(void);
 
+/**
+ * @brief Reset connection at index in connections.
+ *
+ * @param index Connection index to reset.
+ */
+static void reset_connections_idx(size_t index);
+
+/**
+ * @brief Shift connections to right starting from index.
+ * From parameter must be within the range of the array (0, length - 1).
+ * Example:
+ * [1 2 3 FROM -> 5 6 7] -> [1 2 3 ? 4 5 6]
+ *
+ * @param from Start index to shift from.
+ */
+static void shift_right_connections(size_t from);
+
+/**
+ * @brief Shift connections to left starting from index.
+ * From parameter must be within the range of the array (0, length - 1).
+ * Example:
+ * [1 2 3 FROM <- 5 6 7] -> [1 2 3 5 6 7 ?]
+ *
+ * @param from Start index to shift from.
+ */
+static void shift_left_connections(size_t from);
+
 void beacon_init(const struct connection_t *best_connection,
                  struct broadcast_conn *bc_conn, node_role_t role) {
   node_role = role;
@@ -87,7 +114,7 @@ void beacon_bc_recv_cb(struct broadcast_conn *bc_conn,
                        const linkaddr_t *sender) {
   struct beacon_msg_t beacon_msg;
   packetbuf_attr_t rssi;
-  uint connection_index = 0;
+  size_t connection_index = 0;
 
   /* Check received beacon message validity */
   if (packetbuf_datalen() != sizeof(struct beacon_msg_t)) {
@@ -127,10 +154,7 @@ void beacon_bc_recv_cb(struct broadcast_conn *bc_conn,
       return; /* Far or Weak */
 
     /* Right shift connections to accomodate better ith parent node */
-    uint i;
-    for (i = CONNECTION_BEACON_MAX_CONNECTIONS - 1; i > connection_index; --i) {
-      connections[i] = connections[i - 1];
-    }
+    shift_right_connections(connection_index);
   } else {
     /* Greater sequence number */
     reset_connections();
@@ -174,11 +198,39 @@ static void beacon_timer_cb(void *ptr) {
 }
 
 static void reset_connections(void) {
-  uint i;
+  size_t i;
   for (i = 0; i < CONNECTION_BEACON_MAX_CONNECTIONS; ++i) {
-    linkaddr_copy(&connections[i].parent_node, &linkaddr_null);
-    connections[i].seqn = 0;
-    connections[i].hopn = UINT16_MAX;
-    connections[i].rssi = ETC_RSSI_THRESHOLD;
+    reset_connections_idx(i);
   }
+}
+
+static void reset_connections_idx(size_t index) {
+  if (index < 0 || index >= CONNECTION_BEACON_MAX_CONNECTIONS) return;
+
+  linkaddr_copy(&connections[index].parent_node, &linkaddr_null);
+  connections[index].seqn = 0;
+  connections[index].hopn = UINT16_MAX;
+  connections[index].rssi = ETC_RSSI_THRESHOLD;
+}
+
+static void shift_right_connections(size_t from) {
+  if (from < 0 || from >= CONNECTION_BEACON_MAX_CONNECTIONS) return;
+
+  size_t i;
+  for (i = CONNECTION_BEACON_MAX_CONNECTIONS - 1; i > from; --i) {
+    connections[i] = connections[i - 1];
+  }
+
+  reset_connections_idx(from);
+}
+
+static void shift_left_connections(size_t from) {
+  if (from < 0 || from >= CONNECTION_BEACON_MAX_CONNECTIONS) return;
+
+  size_t i;
+  for (i = from; i < CONNECTION_BEACON_MAX_CONNECTIONS - 1; ++i) {
+    connections[i] = connections[i + 1];
+  }
+
+  reset_connections_idx(CONNECTION_BEACON_MAX_CONNECTIONS - 1);
 }
