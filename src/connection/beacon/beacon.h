@@ -1,6 +1,7 @@
 #ifndef _CONNECTION_BEACON__H_
 #define _CONNECTION_BEACON__H_
 
+#include <net/rime/broadcast.h>
 #include <sys/types.h>
 
 #include "connection/connection.h"
@@ -9,10 +10,19 @@
 /**
  * @brief Initialize beacon connection.
  *
+ * @param bc_conn Broadcast connection (opened).
  * @param role Node role.
- * @param channel Channel on which the connection will operate.
  */
-void beacon_init(node_role_t role, uint16_t channel);
+void beacon_init(struct broadcast_conn *bc_conn, node_role_t role);
+
+/**
+ * @brief Broadcast receive callback.
+ *
+ * @param bc_conn Broadcast connection.
+ * @param sender Address of the sender node.
+ */
+void beacon_bc_recv_cb(struct broadcast_conn *bc_conn,
+                       const linkaddr_t *sender);
 
 /**
  * @brief Return beacon connection information.

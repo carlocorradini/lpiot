@@ -42,7 +42,7 @@ bool etc_open(struct etc_conn_t *conn, uint16_t channels, node_role_t node_role,
   /* Initialize sensors forwarding structure */
 
   /* Open the underlying Rime primitives */
-  beacon_init(node_role, channels);
+  connection_init(node_role, channels);
   unicast_open(&conn->uc, channels + 1, &unicast_cb);
 }
 
