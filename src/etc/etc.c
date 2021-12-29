@@ -78,7 +78,7 @@ int etc_trigger(struct etc_conn_t *conn, uint32_t value, uint32_t threshold) {
  * Combining event source (address of the sensor
  * generating the event) and the sequence number.
  */
-static struct event_msg_t {
+struct event_msg_t {
   linkaddr_t event_source;
   uint16_t event_seqn;
 } __attribute__((packed));
@@ -89,7 +89,7 @@ static struct event_msg_t {
 /**
  * @brief Header structure for data packets.
  */
-static struct collect_msg_t {
+struct collect_msg_t {
   linkaddr_t event_source;
   uint16_t event_seqn;
   uint8_t hops;
@@ -110,7 +110,7 @@ static int send_collect_message(struct etc_conn_t *conn) {
   struct collect_msg_t message = {.event_source = linkaddr_node_addr,
                                   .event_seqn = 0,
                                   /*FIXME SEQUENCE hardcoded!*/ .hops = 0};
-  const struct linkaddr_t *parent_node = beacon_connection_info();
+  const linkaddr_t *parent_node = beacon_connection_info();
 
   /* Check if node is disconnected (no parent) */
   if (linkaddr_cmp(parent_node, &linkaddr_null)) return -1;
@@ -167,7 +167,7 @@ static void unicast_recv(struct unicast_conn *uc_conn,
     }
     case NODE_ROLE_SENSOR_ACTUATOR:
     case NODE_ROLE_FORWARDER: {
-      const struct linkaddr_t *parent_node = beacon_connection_info();
+      const linkaddr_t *parent_node = beacon_connection_info();
 
       /* Detect parent node disconnection */
       if (linkaddr_cmp(parent_node, &linkaddr_null)) {
@@ -194,7 +194,7 @@ static void unicast_recv(struct unicast_conn *uc_conn,
 /**
  * @brief Header structure for command packets.
  */
-static struct command_msg_t {
+struct command_msg_t {
   linkaddr_t event_source;
   uint16_t event_seqn;
   /* ... */

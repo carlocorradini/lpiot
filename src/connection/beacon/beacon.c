@@ -30,7 +30,7 @@ static struct {
 /**
  * @brief Beacon message structure.
  */
-static struct beacon_msg_t {
+struct beacon_msg_t {
   /**
    * @brief Sequence number.
    */
@@ -105,9 +105,7 @@ void beacon_init(node_role_t role, uint16_t channel) {
   }
 }
 
-const struct linkaddr_t *beacon_connection_info(void) {
-  return &connection.parent;
-}
+const linkaddr_t *beacon_connection_info(void) { return &connection.parent; }
 
 static void send_beacon_message(const struct beacon_msg_t *beacon_msg) {
   /* Send beacon message in broadcast */

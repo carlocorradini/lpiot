@@ -19,6 +19,6 @@ void beacon_init(node_role_t role, uint16_t channel);
  *
  * @return const struct linkaddr_t* Parent node address.
  */
-const struct linkaddr_t* beacon_connection_info(void);
+const linkaddr_t* beacon_connection_info(void);
 
 #endif
