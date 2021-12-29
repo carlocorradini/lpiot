@@ -10,10 +10,12 @@
 /**
  * @brief Initialize beacon connection.
  *
+ * @param best_conn Best connection pointer.
  * @param bc_conn Broadcast connection (opened).
  * @param role Node role.
  */
-void beacon_init(struct broadcast_conn *bc_conn, node_role_t role);
+void beacon_init(const struct connection_t *best_conn,
+                 struct broadcast_conn *bc_conn, node_role_t role);
 
 /**
  * @brief Broadcast receive callback.
@@ -23,12 +25,5 @@ void beacon_init(struct broadcast_conn *bc_conn, node_role_t role);
  */
 void beacon_bc_recv_cb(struct broadcast_conn *bc_conn,
                        const linkaddr_t *sender);
-
-/**
- * @brief Return beacon connection information.
- *
- * @return const connection_info_t Connection information.
- */
-const struct connection_info_t beacon_connection_info(void);
 
 #endif

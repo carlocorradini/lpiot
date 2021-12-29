@@ -5,6 +5,12 @@
 #include <net/linkaddr.h>
 #include <sys/clock.h>
 
+/* --- CONNECTION --- */
+/**
+ * @brief Maximum number of connections to store
+ */
+#define CONNECTION_BEACON_MAX_CONNECTIONS (3)
+
 /* --- ETC --- */
 /**
  * @brief Starting channel (ETC may use multiple channels).

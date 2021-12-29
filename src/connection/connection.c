@@ -5,6 +5,8 @@
 
 #include "beacon/beacon.h"
 
+const struct connection_t *const best_conn;
+
 /* --- BROADCAST --- */
 /**
  * @brief Broadcast connection object.
@@ -32,10 +34,11 @@ static const struct broadcast_callbacks bc_cb = {.recv = bc_recv_cb,
  */
 static struct unicast_conn uc_conn;
 
+/* --- --- */
 void connection_init(node_role_t node_role, uint16_t channel) {
   /* Open the underlying Rime primitive */
   broadcast_open(&bc_conn, channel, &bc_cb);
-  beacon_init(&bc_conn, node_role);
+  beacon_init(best_conn, &bc_conn, node_role);
 }
 
 static void bc_recv_cb(struct broadcast_conn *bc_conn,
