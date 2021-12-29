@@ -12,7 +12,7 @@ static struct {
   /**
    * @brief Parent node address.
    */
-  linkaddr_t parent;
+  linkaddr_t parent_node;
   /**
    * @brief Sequence number.
    */
@@ -89,7 +89,7 @@ void beacon_init(node_role_t role, uint16_t channel) {
   node_role = role;
 
   /* Initialize connection structure */
-  linkaddr_copy(&connection.parent, &linkaddr_null);
+  linkaddr_copy(&connection.parent_node, &linkaddr_null);
   connection.seqn = 0;
   connection.hopn = UINT16_MAX;
   connection.rssi = ETC_RSSI_THRESHOLD;
@@ -105,7 +105,10 @@ void beacon_init(node_role_t role, uint16_t channel) {
   }
 }
 
-const linkaddr_t *beacon_connection_info(void) { return &connection.parent; }
+const struct connection_info_t beacon_connection_info(void) {
+  return (const struct connection_info_t){.parent_node =
+                                              &connection.parent_node};
+}
 
 static void send_beacon_message(const struct beacon_msg_t *beacon_msg) {
   /* Send beacon message in broadcast */
@@ -148,13 +151,13 @@ static void broadcast_recv_cb(struct broadcast_conn *bc_conn,
   }
 
   /* Better parent node */
-  linkaddr_copy(&connection.parent, sender);
+  linkaddr_copy(&connection.parent_node, sender);
   connection.seqn = beacon_msg.seqn;
   connection.hopn = beacon_msg.hopn + 1;
   connection.rssi = rssi;
   printf("New parent %02x:%02x: { hopn: %d, rssi: %d }\n",
-         connection.parent.u8[0], connection.parent.u8[1], connection.hopn,
-         connection.rssi);
+         connection.parent_node.u8[0], connection.parent_node.u8[1],
+         connection.hopn, connection.rssi);
 
   /* Schedule beacon message propagation */
   ctimer_set(&beacon_timer, ETC_BEACON_FORWARD_DELAY, beacon_timer_cb, NULL);

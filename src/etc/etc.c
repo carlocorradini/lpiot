@@ -110,7 +110,7 @@ static int send_collect_message(struct etc_conn_t *conn) {
   struct collect_msg_t message = {.event_source = linkaddr_node_addr,
                                   .event_seqn = 0,
                                   /*FIXME SEQUENCE hardcoded!*/ .hops = 0};
-  const linkaddr_t *parent_node = beacon_connection_info();
+  const linkaddr_t *parent_node = beacon_connection_info().parent_node;
 
   /* Check if node is disconnected (no parent) */
   if (linkaddr_cmp(parent_node, &linkaddr_null)) return -1;
@@ -167,7 +167,7 @@ static void unicast_recv(struct unicast_conn *uc_conn,
     }
     case NODE_ROLE_SENSOR_ACTUATOR:
     case NODE_ROLE_FORWARDER: {
-      const linkaddr_t *parent_node = beacon_connection_info();
+      const linkaddr_t *parent_node = beacon_connection_info().parent_node;
 
       /* Detect parent node disconnection */
       if (linkaddr_cmp(parent_node, &linkaddr_null)) {
