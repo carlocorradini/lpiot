@@ -90,7 +90,7 @@ int etc_trigger(uint32_t value, uint32_t threshold) {
   packetbuf_copyfrom(&event_msg, sizeof(struct event_msg_t));
 
   /* Send event message in broadcast */
-  return connection_broadcast_send(BROADCAST_MSG_TYPE_BEACON);
+  return connection_broadcast_send(BROADCAST_MSG_TYPE_EVENT);
 }
 
 int etc_command(const linkaddr_t *receiver, enum command_type_t command,
