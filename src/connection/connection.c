@@ -57,10 +57,15 @@ int connection_broadcast_send(enum broadcast_msg_type_t type) {
     return -2; /* Insufficient space */
 
   /* Copy header */
-  memcpy(packetbuf_hdrptr, &bc_header, sizeof(bc_header));
+  memcpy(packetbuf_hdrptr(), &bc_header, sizeof(bc_header));
 
   /* Send */
-  return broadcast_send(&bc_conn);
+  const int ret = broadcast_send(&bc_conn);
+  if (!ret)
+    LOG_DEBUG("Error sending broadcast message");
+  else
+    LOG_DEBUG("Broadcast message sent successfully");
+  return ret;
 }
 
 static void bc_recv_cb(struct broadcast_conn *bc_conn,
@@ -68,7 +73,7 @@ static void bc_recv_cb(struct broadcast_conn *bc_conn,
   struct broadcast_hdr_t bc_header;
 
   /* Check received broadcast message validity */
-  if (packetbuf_datalen() < sizeof(struct broadcast_hdr_t)) {
+  if (packetbuf_datalen() < sizeof(bc_header)) {
     LOG_ERROR("Broadcast message wrong size: %u byte", packetbuf_datalen());
     return;
   }
@@ -77,7 +82,7 @@ static void bc_recv_cb(struct broadcast_conn *bc_conn,
   memcpy(&bc_header, packetbuf_dataptr(), sizeof(bc_header));
 
   /* Reduce header in packetbuf */
-  if (!packetbuf_hdrreduce(sizeof(struct broadcast_hdr_t))) {
+  if (!packetbuf_hdrreduce(sizeof(bc_header))) {
     LOG_ERROR("Error reducing broadcast header");
     return;
   }
@@ -85,10 +90,12 @@ static void bc_recv_cb(struct broadcast_conn *bc_conn,
   /* Forward to correct callback */
   switch (bc_header.type) {
     case BROADCAST_MSG_TYPE_BEACON: {
+      LOG_DEBUG("Received broadcast message of type BEACON");
       beacon_recv_cb(&bc_header, sender);
       break;
     }
     case BROADCAST_MSG_TYPE_EVENT: {
+      LOG_DEBUG("Received broadcast message of type EVENT");
       /* TODO */
       break;
     }

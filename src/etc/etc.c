@@ -62,14 +62,6 @@ void etc_update(uint32_t value, uint32_t threshold) {
   /* Update local value and threshold, to be sent in case of event */
 }
 
-int etc_trigger(struct etc_conn_t *conn, uint32_t value, uint32_t threshold) {
-  /* Prepare event message */
-
-  /* Suppress other events for a given time window */
-
-  /* Send event */
-}
-
 /*---------------------------------------------------------------------------*/
 /*                               Event Handling                              */
 /*---------------------------------------------------------------------------*/
@@ -82,6 +74,26 @@ struct event_msg_t {
   linkaddr_t event_source;
   uint16_t event_seqn;
 } __attribute__((packed));
+
+int etc_trigger(struct etc_conn_t *conn, uint32_t value, uint32_t threshold) {
+  /* Prepare event message */
+  struct event_msg_t event_msg;
+  linkaddr_copy(&event_msg.event_source, &linkaddr_node_addr);
+  event_msg.event_seqn = 99l;
+
+  /* Prepare packetbuf */
+  packetbuf_clear();
+  packetbuf_copyfrom(&event_msg, sizeof(struct event_msg_t));
+
+  /* Send beacon message in broadcast */
+  return connection_broadcast_send(BROADCAST_MSG_TYPE_BEACON);
+
+  /* Prepare event message */
+
+  /* Suppress other events for a given time window */
+
+  /* Send event */
+}
 
 /*---------------------------------------------------------------------------*/
 /*                               Data Handling                               */
