@@ -93,7 +93,7 @@ void controller_init(struct etc_conn_t *conn) {
   etc_conn = conn;
 
   /* Sensor structure */
-  uint i;
+  size_t i;
   for (i = 0; i < NUM_SENSORS; ++i) {
     linkaddr_copy(&sensor_readings[i].addr, &SENSORS[i]);
     sensor_readings[i].reading_available = false;
@@ -168,7 +168,7 @@ static void actuation_logic(void) {
     restart_check = false;
 
     /* Find min */
-    uint32_t value_min = 0;
+    size_t value_min = 0;
     for (i = 0; i < NUM_SENSORS; i++) {
       if (sensor_readings[i].reading_available) {
         value_min = sensor_readings[i].value;

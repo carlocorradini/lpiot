@@ -2,7 +2,6 @@
 #define _CONNECTION_H_
 
 #include <net/linkaddr.h>
-#include <net/packetbuf.h>
 #include <sys/types.h>
 
 #include "node/node.h"
@@ -26,7 +25,7 @@ struct connection_t {
   /**
    * @brief RSSI parent node.
    */
-  packetbuf_attr_t rssi;
+  uint16_t rssi;
 };
 
 /**

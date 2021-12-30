@@ -11,6 +11,6 @@
  * @param conn Pointer to an ETC connection object.
  * @param sensor_index Sensor index.
  */
-void sensor_init(struct etc_conn_t *conn, uint sensor_index);
+void sensor_init(struct etc_conn_t *conn, size_t sensor_index);
 
 #endif

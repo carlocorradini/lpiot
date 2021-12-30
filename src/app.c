@@ -35,7 +35,7 @@ PROCESS_THREAD(app_process, ev, data) {
       printf("[APP]: Controller started\n");
     } else {
       bool is_sensor = false;
-      uint i;
+      size_t i;
       for (i = 0; i < NUM_SENSORS; ++i) {
         if (linkaddr_cmp(&SENSORS[i], &linkaddr_node_addr)) {
           /* --- Sensor/Actuator */

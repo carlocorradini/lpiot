@@ -113,7 +113,7 @@ static void send_beacon_message(struct broadcast_conn *bc_conn,
 void beacon_bc_recv_cb(struct broadcast_conn *bc_conn,
                        const linkaddr_t *sender) {
   struct beacon_msg_t beacon_msg;
-  packetbuf_attr_t rssi;
+  uint16_t rssi;
   size_t connection_index = 0;
 
   /* Check received beacon message validity */

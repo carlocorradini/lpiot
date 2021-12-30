@@ -50,7 +50,7 @@ static struct etc_conn_t *etc_conn = NULL;
 static const struct etc_callbacks_t cb = {
     .receive_cb = NULL, .event_cb = NULL, .command_cb = command_cb};
 
-void sensor_init(struct etc_conn_t *conn, uint sensor_index) {
+void sensor_init(struct etc_conn_t *conn, size_t sensor_index) {
   etc_conn = conn;
   sensor_value = SENSOR_INITIAL_VALUE * sensor_index;
   sensor_threshold = CONTROLLER_MAX_DIFF;
