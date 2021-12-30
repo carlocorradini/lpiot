@@ -79,12 +79,6 @@ struct etc_conn_t {
    */
   struct ctimer suppression_prop_timer;
 
-  /* --- */
-  /**
-   * @brief Node role.
-   */
-  node_role_t node_role;
-
   /* --- Event */
   /**
    * @brief Current handled event node address handled.
@@ -102,7 +96,6 @@ struct etc_conn_t {
  *
  * @param conn Pointer to a ETC connection object.
  * @param channels Starting channel (ETC may use multiple channels).
- * @param node_role Role of the node (controller, forwarders, sensor/actuator).
  * @param callbacks Pointer to the callback structure.
  * @param sensors Addresses of sensors.
  * @param num_sensors Number of sensors.
@@ -110,7 +103,7 @@ struct etc_conn_t {
  * @return true ETC connection succeeded.
  * @return false ETC connection failed.
  */
-bool etc_open(struct etc_conn_t *conn, uint16_t channels, node_role_t node_role,
+bool etc_open(struct etc_conn_t *conn, uint16_t channels,
               const struct etc_callbacks_t *callbacks,
               const linkaddr_t *sensors, uint8_t num_sensors);
 

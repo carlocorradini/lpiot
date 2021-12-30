@@ -4,6 +4,7 @@
 
 #include "config/config.h"
 #include "logger/logger.h"
+#include "node/node.h"
 
 /**
  * @brief Beacon connection(s) object.
@@ -29,11 +30,6 @@ struct beacon_msg_t {
  * @brief Beacon message generation timer.
  */
 static struct ctimer beacon_timer;
-
-/**
- * @brief Node role.
- */
-static node_role_t node_role;
 
 /**
  * @brief Send beacon message.
@@ -81,9 +77,7 @@ static void shift_right_connections(size_t from);
  */
 static void shift_left_connections(size_t from);
 
-void beacon_init(const struct connection_t *best_connection, node_role_t role) {
-  node_role = role;
-
+void beacon_init(const struct connection_t *best_connection) {
   /* Best connection is always first in connections */
   best_connection = &connections[0];
 
@@ -91,7 +85,7 @@ void beacon_init(const struct connection_t *best_connection, node_role_t role) {
   reset_connections();
 
   /* Tree construction */
-  if (node_role == NODE_ROLE_CONTROLLER) {
+  if (node_get_role() == NODE_ROLE_CONTROLLER) {
     connections[0].hopn = 0;
     /* Schedule the first beacon message flood */
     ctimer_set(&beacon_timer, CLOCK_SECOND, beacon_timer_cb, NULL);
@@ -192,7 +186,7 @@ static void beacon_timer_cb(void *ignored) {
   /* Send beacon message */
   send_beacon_message(&beacon_msg);
 
-  if (node_role == NODE_ROLE_CONTROLLER) {
+  if (node_get_role() == NODE_ROLE_CONTROLLER) {
     /* Rebuild tree from scratch */
 
     /* Increase beacon sequence number */

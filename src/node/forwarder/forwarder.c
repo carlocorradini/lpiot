@@ -17,6 +17,5 @@ void forwarder_init(struct etc_conn_t *conn) {
   etc_conn = conn;
 
   /* Open connection */
-  etc_open(etc_conn, ETC_FIRST_CHANNEL, NODE_ROLE_FORWARDER, &cb, SENSORS,
-           NUM_SENSORS);
+  etc_open(etc_conn, ETC_FIRST_CHANNEL, &cb, SENSORS, NUM_SENSORS);
 }

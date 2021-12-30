@@ -3,6 +3,7 @@
 #include <stdarg.h>
 
 #include "config/config.h"
+#include "node/node.h"
 
 /**
  * @brief Current log level.
@@ -22,7 +23,8 @@ void logger_log(enum log_level_t level, const char* file, int line,
   if (!logger_is_enabled(level)) return; /* Disabled level */
 
   va_start(arg, fmt);
-  printf("%-5s %s:%d: ", log_level_strings[level], file, line);
+  printf("%-5s %s %s:%d: ", log_level_strings[level], node_get_role_name(),
+         file, line);
   vprintf(fmt, arg);
   printf("\n");
   va_end(arg);

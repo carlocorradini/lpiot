@@ -5,8 +5,6 @@
 #include <stdbool.h>
 #include <sys/types.h>
 
-#include "node/node.h"
-
 /**
  * @brief Connection object.
  */
@@ -67,10 +65,9 @@ struct broadcast_hdr_t {
 /**
  * @brief Initialize node connection(s).
  *
- * @param node_role Node role.
  * @param channel Channel(s) on which the connection will operate.
  */
-void connection_init(node_role_t node_role, uint16_t channel);
+void connection_init(uint16_t channel);
 
 /**
  * @brief Check if there is a valid connection.

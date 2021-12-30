@@ -7,9 +7,8 @@
  * @brief Initialize beacon connection.
  *
  * @param best_conn Best connection pointer.
- * @param role Node role.
  */
-void beacon_init(const struct connection_t *best_conn, node_role_t role);
+void beacon_init(const struct connection_t *best_conn);
 
 /**
  * @brief Broadcast receive callback.

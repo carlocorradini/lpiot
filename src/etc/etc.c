@@ -33,17 +33,16 @@ static struct unicast_callbacks unicast_cb = {.recv = unicast_recv,
 /*---------------------------------------------------------------------------*/
 /*                           Application Interface                           */
 /*---------------------------------------------------------------------------*/
-bool etc_open(struct etc_conn_t *conn, uint16_t channels, node_role_t node_role,
+bool etc_open(struct etc_conn_t *conn, uint16_t channels,
               const struct etc_callbacks_t *callbacks,
               const linkaddr_t *sensors, uint8_t num_sensors) {
   /* Initialize connector structure */
   conn->callbacks = callbacks;
-  conn->node_role = node_role;
 
   /* Initialize sensors forwarding structure */
 
   /* Open the underlying Rime primitives */
-  connection_init(node_role, channels);
+  connection_init(channels);
   unicast_open(&conn->uc, channels + 1, &unicast_cb);
 }
 
@@ -151,7 +150,7 @@ static void unicast_recv(struct unicast_conn *uc_conn,
   printf("[ETC]: Data packet rcvd -- source: %02x:%02x, hops: %u\n",
          header.event_source.u8[0], header.event_source.u8[1], header.hops);
 
-  switch (conn->node_role) {
+  switch (node_get_role()) {
     case NODE_ROLE_CONTROLLER: {
       /* Remove header to make packetbuf_dataptr() point to the beginning of
        * the application payload */

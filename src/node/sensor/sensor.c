@@ -58,8 +58,7 @@ void sensor_init(struct etc_conn_t *conn, size_t sensor_index) {
   ctimer_set(&sensor_timer, SENSOR_UPDATE_INTERVAL, sensor_timer_cb, NULL);
 
   /* Open connection */
-  etc_open(etc_conn, ETC_FIRST_CHANNEL, NODE_ROLE_SENSOR_ACTUATOR, &cb, SENSORS,
-           NUM_SENSORS);
+  etc_open(etc_conn, ETC_FIRST_CHANNEL, &cb, SENSORS, NUM_SENSORS);
 }
 
 static void sensor_timer_cb(void *ptr) {

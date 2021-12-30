@@ -101,8 +101,7 @@ void controller_init(struct etc_conn_t *conn) {
   num_sensor_readings = 0;
 
   /* Open connection */
-  etc_open(conn, ETC_FIRST_CHANNEL, NODE_ROLE_CONTROLLER, &cb, SENSORS,
-           NUM_SENSORS);
+  etc_open(conn, ETC_FIRST_CHANNEL, &cb, SENSORS, NUM_SENSORS);
 }
 
 static void receive_cb(const linkaddr_t *event_source, uint16_t event_seqn,

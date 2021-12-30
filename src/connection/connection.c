@@ -36,12 +36,12 @@ static const struct broadcast_callbacks bc_cb = {.recv = bc_recv_cb,
 static struct unicast_conn uc_conn;
 
 /* --- --- */
-void connection_init(node_role_t node_role, uint16_t channel) {
+void connection_init(uint16_t channel) {
   /* Open the underlying Rime primitive */
   broadcast_open(&bc_conn, channel, &bc_cb);
 
   /* Initialize beacon */
-  beacon_init(best_conn, node_role);
+  beacon_init(best_conn);
 }
 
 bool connection_is_connected() {
