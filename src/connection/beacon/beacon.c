@@ -37,18 +37,16 @@ static node_role_t node_role;
 /**
  * @brief Send beacon message.
  *
- * @param bc_conn Broadcast connection.
  * @param beacon_msg Beacon message to send.
  */
-static void send_beacon_message(struct broadcast_conn *bc_conn,
-                                const struct beacon_msg_t *beacon_msg);
+static void send_beacon_message(const struct beacon_msg_t *beacon_msg);
 
 /**
  * @brief Beacon timer callback.
  *
- * @param ptr Broadcast connection opaque pointer.
+ * @param ignored.
  */
-static void beacon_timer_cb(void *ptr);
+static void beacon_timer_cb(void *ignored);
 
 /**
  * @brief Reset connections to default values.
@@ -82,8 +80,7 @@ static void shift_right_connections(size_t from);
  */
 static void shift_left_connections(size_t from);
 
-void beacon_init(const struct connection_t *best_connection,
-                 struct broadcast_conn *bc_conn, node_role_t role) {
+void beacon_init(const struct connection_t *best_connection, node_role_t role) {
   node_role = role;
 
   /* Best connection is always first in connections */
@@ -96,30 +93,35 @@ void beacon_init(const struct connection_t *best_connection,
   if (node_role == NODE_ROLE_CONTROLLER) {
     connections[0].hopn = 0;
     /* Schedule the first beacon message flood */
-    ctimer_set(&beacon_timer, CLOCK_SECOND, beacon_timer_cb, bc_conn);
+    ctimer_set(&beacon_timer, CLOCK_SECOND, beacon_timer_cb, NULL);
   }
 }
 
-static void send_beacon_message(struct broadcast_conn *bc_conn,
-                                const struct beacon_msg_t *beacon_msg) {
-  /* Send beacon message in broadcast */
+static void send_beacon_message(const struct beacon_msg_t *beacon_msg) {
+  /* Prepare packetbuf */
   packetbuf_clear();
   packetbuf_copyfrom(beacon_msg, sizeof(struct beacon_msg_t));
+
+  /* Send beacon message in broadcast */
+  const int ret = connection_broadcast_send(BROADCAST_MSG_TYPE_BEACON);
+  if (!ret) {
+    /* Error */
+    printf("Error sending beacon message: %d\n", ret);
+    return;
+  }
   printf("Sending beacon message: { seqn: %u, hopn: %u }\n", beacon_msg->seqn,
          beacon_msg->hopn);
-  broadcast_send(bc_conn);
 }
 
-void beacon_bc_recv_cb(struct broadcast_conn *bc_conn,
-                       const linkaddr_t *sender) {
+void beacon_recv_cb(const struct broadcast_hdr_t *header,
+                    const linkaddr_t *sender) {
   struct beacon_msg_t beacon_msg;
   uint16_t rssi;
   size_t connection_index = 0;
 
   /* Check received beacon message validity */
   if (packetbuf_datalen() != sizeof(struct beacon_msg_t)) {
-    printf("Received beacon message with wrong size: %u\n",
-           packetbuf_datalen());
+    printf("Received beacon message wrong size: %u\n", packetbuf_datalen());
     return;
   }
 
@@ -156,7 +158,7 @@ void beacon_bc_recv_cb(struct broadcast_conn *bc_conn,
     /* Right shift connections to accomodate better ith parent node */
     shift_right_connections(connection_index);
   } else {
-    /* Greater sequence number */
+    /* Greater sequence number, reset connections */
     reset_connections();
   }
 
@@ -172,20 +174,17 @@ void beacon_bc_recv_cb(struct broadcast_conn *bc_conn,
            connections[0].parent_node.u8[0], connections[0].parent_node.u8[1],
            connections[0].hopn, connections[0].rssi);
     /* Schedule beacon message propagation only if best */
-    ctimer_set(&beacon_timer, ETC_BEACON_FORWARD_DELAY, beacon_timer_cb,
-               bc_conn);
+    ctimer_set(&beacon_timer, ETC_BEACON_FORWARD_DELAY, beacon_timer_cb, NULL);
   }
 }
 
-static void beacon_timer_cb(void *ptr) {
-  struct broadcast_conn *bc_conn = (struct broadcast_conn *)ptr;
-
+static void beacon_timer_cb(void *ignored) {
   /* Prepare beacon message */
   const struct beacon_msg_t beacon_msg = {.seqn = connections[0].seqn,
                                           .hopn = connections[0].hopn};
 
   /* Send beacon message */
-  send_beacon_message(bc_conn, &beacon_msg);
+  send_beacon_message(&beacon_msg);
 
   if (node_role == NODE_ROLE_CONTROLLER) {
     /* Rebuild tree from scratch */
@@ -193,7 +192,7 @@ static void beacon_timer_cb(void *ptr) {
     /* Increase beacon sequence number */
     connections[0].seqn += 1;
     /* Schedule next beacon message flood */
-    ctimer_set(&beacon_timer, ETC_BEACON_INTERVAL, beacon_timer_cb, bc_conn);
+    ctimer_set(&beacon_timer, ETC_BEACON_INTERVAL, beacon_timer_cb, NULL);
   }
 }
 
