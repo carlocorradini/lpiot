@@ -1,8 +1,7 @@
 #include "sensor.h"
 
-#include <stdio.h>
-
 #include "config/config.h"
+#include "logger/logger.h"
 
 /**
  * @brief Last (current) sensed value.
@@ -68,15 +67,14 @@ static void sensor_timer_cb(void *ptr) {
   sensor_value += SENSOR_UPDATE_INCREMENT;
 
   etc_update(sensor_value, sensor_threshold);
-  printf("[SENSOR]: Reading { value: %lu, threshold: %lu }\n", sensor_value,
-         sensor_threshold);
+  LOG_INFO("Reading { value: %lu, threshold: %lu }", sensor_value,
+           sensor_threshold);
 
   if (sensor_value > sensor_threshold) {
     int ret = etc_trigger(etc_conn, sensor_value, sensor_threshold);
     if (ret) {
-      printf("[SENSOR]: Trigger [%02x:%02x, %u]\n",
-             etc_conn->event_source.u8[0], etc_conn->event_source.u8[1],
-             etc_conn->event_seqn);
+      LOG_INFO("Trigger [%02x:%02x, %u]", etc_conn->event_source.u8[0],
+               etc_conn->event_source.u8[1], etc_conn->event_seqn);
     }
   }
 
@@ -86,20 +84,20 @@ static void sensor_timer_cb(void *ptr) {
 
 static void command_cb(const linkaddr_t *event_source, uint16_t event_seqn,
                        command_type_t command, uint32_t threshold) {
-  printf("[SENSOR]: Actuation [%02x:%02x, %u] %02x:%02x\n", event_source->u8[0],
-         event_source->u8[1], event_seqn, linkaddr_node_addr.u8[0],
-         linkaddr_node_addr.u8[1]);
+  LOG_INFO("Actuation [%02x:%02x, %u] %02x:%02x", event_source->u8[0],
+           event_source->u8[1], event_seqn, linkaddr_node_addr.u8[0],
+           linkaddr_node_addr.u8[1]);
 
   switch (command) {
     case COMMAND_TYPE_NONE: {
-      printf("[SENSOR]: Received COMMAND_TYPE_NONE. Ignoring it...\n");
+      LOG_INFO("Received COMMAND_TYPE_NONE. Ignoring it...");
       break;
     }
     case COMMAND_TYPE_RESET: {
-      printf(
-          "[SENSOR]: Received COMMAND_TYPE_RESET. From { value: %lu, "
-          "threshold: "
-          "%lu } to { value: %lu, threshold: %lu }\n",
+      LOG_INFO(
+          "Received COMMAND_TYPE_RESET. From "
+          "{ value: %lu, threshold: %lu } to "
+          "{ value: %lu, threshold: %lu }",
           sensor_value, sensor_threshold, (uint32_t)0,
           (uint32_t)CONTROLLER_MAX_DIFF);
       sensor_value = 0;
@@ -108,10 +106,10 @@ static void command_cb(const linkaddr_t *event_source, uint16_t event_seqn,
       break;
     }
     case COMMAND_TYPE_THRESHOLD: {
-      printf(
-          "[SENSOR]: Received COMMAND_TYPE_THRESHOLD. From { value: %lu, "
-          "threshold: "
-          "%lu } to { value: %lu, threshold: %lu }\n",
+      LOG_INFO(
+          "Received COMMAND_TYPE_THRESHOLD. From "
+          "{ value: %lu, threshold: %lu } to "
+          "{ value: %lu, threshold: %lu }",
           sensor_value, sensor_threshold, sensor_value, threshold);
       sensor_threshold = threshold;
       break;

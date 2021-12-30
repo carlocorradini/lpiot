@@ -1,11 +1,7 @@
 #ifndef _CONNECTION_BEACON__H_
 #define _CONNECTION_BEACON__H_
 
-#include <net/rime/broadcast.h>
-#include <sys/types.h>
-
 #include "connection/connection.h"
-#include "node/node.h"
 
 /**
  * @brief Initialize beacon connection.

@@ -1,8 +1,9 @@
 #include "beacon.h"
 
-#include <stdio.h>
+#include <net/packetbuf.h>
 
 #include "config/config.h"
+#include "logger/logger.h"
 
 /**
  * @brief Beacon connection(s) object.
@@ -106,11 +107,11 @@ static void send_beacon_message(const struct beacon_msg_t *beacon_msg) {
   const int ret = connection_broadcast_send(BROADCAST_MSG_TYPE_BEACON);
   if (!ret) {
     /* Error */
-    printf("Error sending beacon message: %d\n", ret);
+    LOG_ERROR("Error sending beacon message: %d", ret);
     return;
   }
-  printf("Sending beacon message: { seqn: %u, hopn: %u }\n", beacon_msg->seqn,
-         beacon_msg->hopn);
+  LOG_INFO("Sending beacon message: { seqn: %u, hopn: %u }", beacon_msg->seqn,
+           beacon_msg->hopn);
 }
 
 void beacon_recv_cb(const struct broadcast_hdr_t *header,
@@ -121,7 +122,8 @@ void beacon_recv_cb(const struct broadcast_hdr_t *header,
 
   /* Check received beacon message validity */
   if (packetbuf_datalen() != sizeof(struct beacon_msg_t)) {
-    printf("Received beacon message wrong size: %u\n", packetbuf_datalen());
+    LOG_ERROR("Received beacon message wrong size: %u byte",
+              packetbuf_datalen());
     return;
   }
 
@@ -130,9 +132,9 @@ void beacon_recv_cb(const struct broadcast_hdr_t *header,
 
   /* Read RSSI of last reception */
   rssi = packetbuf_attr(PACKETBUF_ATTR_RSSI);
-  printf(
+  LOG_INFO(
       "Received beacon message from %02x:%02x with rssi %d: "
-      "{ seqn: %u, hopn: %u}\n",
+      "{ seqn: %u, hopn: %u}",
       sender->u8[0], sender->u8[1], rssi, beacon_msg.seqn, beacon_msg.hopn);
 
   /* Analyze received beacon message */
@@ -170,12 +172,16 @@ void beacon_recv_cb(const struct broadcast_hdr_t *header,
 
   if (connection_index == 0) {
     /* New best (connection) parent */
-    printf("New parent %02x:%02x: { hopn: %u, rssi: %d }\n",
-           connections[0].parent_node.u8[0], connections[0].parent_node.u8[1],
-           connections[0].hopn, connections[0].rssi);
+    LOG_INFO("New parent %02x:%02x: { hopn: %u, rssi: %d }",
+             connections[0].parent_node.u8[0], connections[0].parent_node.u8[1],
+             connections[0].hopn, connections[0].rssi);
     /* Schedule beacon message propagation only if best */
     ctimer_set(&beacon_timer, ETC_BEACON_FORWARD_DELAY, beacon_timer_cb, NULL);
-  }
+  } else
+    LOG_DEBUG("Backup parent %02x:%02x at %d: { hopn: %u, rssi: %d }",
+              connections[0].parent_node.u8[0],
+              connections[0].parent_node.u8[1], connection_index,
+              connections[0].hopn, connections[0].rssi);
 }
 
 static void beacon_timer_cb(void *ignored) {

@@ -1,8 +1,7 @@
 #include "controller.h"
 
-#include <stdio.h>
-
 #include "config/config.h"
+#include "logger/logger.h"
 
 /**
  * @brief Sensor reading.
@@ -121,9 +120,10 @@ static void receive_cb(const linkaddr_t *event_source, uint16_t event_seqn,
    * concurrent event. To match logs, the controller should
    * always use the same event_source and event_seqn for collection
    * and actuation */
-  printf("COLLECT [%02x:%02x, %u] %02x:%02x (%lu, %lu)\n",
-         etc_conn->event_source.u8[0], etc_conn->event_source.u8[1],
-         etc_conn->event_seqn, source->u8[0], source->u8[1], value, threshold);
+  LOG_INFO("COLLECT [%02x:%02x, %u] %02x:%02x (%lu, %lu)",
+           etc_conn->event_source.u8[0], etc_conn->event_source.u8[1],
+           etc_conn->event_seqn, source->u8[0], source->u8[1], value,
+           threshold);
 
   /* If all data was collected, call actuation logic */
 }
@@ -133,8 +133,8 @@ static void event_cb(const linkaddr_t *event_source, uint16_t event_seqn) {
    * otherwise, update the current event being handled */
 
   /* Logging */
-  printf("EVENT [%02x:%02x, %u]\n", etc_conn->event_source.u8[0],
-         etc_conn->event_source.u8[1], etc_conn->event_seqn);
+  LOG_INFO("EVENT [%02x:%02x, %u]", etc_conn->event_source.u8[0],
+           etc_conn->event_source.u8[1], etc_conn->event_seqn);
 
   /* Wait for sensor readings */
 }
@@ -149,7 +149,7 @@ static void event_cb(const linkaddr_t *event_source, uint16_t event_seqn) {
  */
 static void actuation_logic(void) {
   if (num_sensor_readings < 1) {
-    printf("Controller: No data collected\n");
+    LOG_INFO("Controller: No data collected");
     return;
   }
 
@@ -157,8 +157,8 @@ static void actuation_logic(void) {
   int i, j;
   for (i = 0; i < NUM_SENSORS; i++) {
     if (!sensor_readings[i].reading_available) {
-      printf("Controller: Missing %02x:%02x data\n",
-             sensor_readings[i].addr.u8[0], sensor_readings[i].addr.u8[1]);
+      LOG_INFO("Controller: Missing %02x:%02x data",
+               sensor_readings[i].addr.u8[0], sensor_readings[i].addr.u8[1]);
     }
   }
 
@@ -200,9 +200,9 @@ static void actuation_logic(void) {
           sensor_readings[i].value = 0;
           sensor_readings[i].threshold = CONTROLLER_MAX_DIFF;
 
-          printf("Controller: Reset %02x:%02x (%lu, %lu)\n",
-                 sensor_readings[i].addr.u8[0], sensor_readings[i].addr.u8[1],
-                 sensor_readings[i].value, sensor_readings[i].threshold);
+          LOG_INFO("Controller: Reset %02x:%02x (%lu, %lu)",
+                   sensor_readings[i].addr.u8[0], sensor_readings[i].addr.u8[1],
+                   sensor_readings[i].value, sensor_readings[i].threshold);
 
           /* A value was changed, restart values check */
           restart_check = true;
@@ -210,9 +210,9 @@ static void actuation_logic(void) {
           sensor_readings[i].command = COMMAND_TYPE_THRESHOLD;
           sensor_readings[i].threshold += value_min;
 
-          printf("Controller: Update threshold %02x:%02x (%lu, %lu)\n",
-                 sensor_readings[i].addr.u8[0], sensor_readings[i].addr.u8[1],
-                 sensor_readings[i].value, sensor_readings[i].threshold);
+          LOG_INFO("Controller: Update threshold %02x:%02x (%lu, %lu)",
+                   sensor_readings[i].addr.u8[0], sensor_readings[i].addr.u8[1],
+                   sensor_readings[i].value, sensor_readings[i].threshold);
 
           /* A value was changed, restart values check */
           restart_check = true;
@@ -237,10 +237,10 @@ static void actuation_commands(void) {
                   sensor_readings[i].command, sensor_readings[i].threshold);
 
       /* Logging (based on the current event, expressed by source seqn) */
-      printf("COMMAND [%02x:%02x, %u] %02x:%02x\n",
-             etc_conn->event_source.u8[0], etc_conn->event_source.u8[1],
-             etc_conn->event_seqn, sensor_readings[i].addr.u8[0],
-             sensor_readings[i].addr.u8[1]);
+      LOG_INFO("COMMAND [%02x:%02x, %u] %02x:%02x",
+               etc_conn->event_source.u8[0], etc_conn->event_source.u8[1],
+               etc_conn->event_seqn, sensor_readings[i].addr.u8[0],
+               sensor_readings[i].addr.u8[1]);
     }
   }
 }

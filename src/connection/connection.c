@@ -2,9 +2,9 @@
 
 #include <net/rime/broadcast.h>
 #include <net/rime/unicast.h>
-#include <stdio.h>
 
 #include "beacon/beacon.h"
+#include "logger/logger.h"
 
 const struct connection_t *const best_conn;
 
@@ -69,8 +69,7 @@ static void bc_recv_cb(struct broadcast_conn *bc_conn,
 
   /* Check received broadcast message validity */
   if (packetbuf_datalen() < sizeof(struct broadcast_hdr_t)) {
-    printf("[CONNECTION]: Broadcast message wrong size: %u byte\n",
-           packetbuf_datalen());
+    LOG_ERROR("Broadcast message wrong size: %u byte", packetbuf_datalen());
     return;
   }
 
@@ -79,7 +78,7 @@ static void bc_recv_cb(struct broadcast_conn *bc_conn,
 
   /* Reduce header in packetbuf */
   if (!packetbuf_hdrreduce(sizeof(struct broadcast_hdr_t))) {
-    printf("[CONNECTION]: Broadcast header error reducing\n");
+    LOG_ERROR("Error reducing broadcast header");
     return;
   }
 
@@ -94,8 +93,8 @@ static void bc_recv_cb(struct broadcast_conn *bc_conn,
       break;
     }
     default: {
-      printf("[CONNECTION]: Broadcast message type is unknown: %d\n",
-             bc_header.type);
+      LOG_WARN("Received broadcast message of unknown type: %d",
+               bc_header.type);
       break;
     }
   }

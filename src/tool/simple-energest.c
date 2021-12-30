@@ -43,14 +43,8 @@
 #include "simple-energest.h"
 
 #include <contiki.h>
-#include <stdio.h>
 
-#define DEBUG 1
-#if DEBUG
-#define PRINTF(...) printf(__VA_ARGS__)
-#else
-#define PRINTF(...)
-#endif
+#include "logger/logger.h"
 
 static uint16_t cnt;
 static uint32_t last_cpu, last_lpm, last_tx, last_rx;
@@ -89,8 +83,8 @@ void simple_energest_step(void) {
   last_tx = curr_tx;
   last_rx = curr_rx;
 
-  PRINTF("Energest: %u %lu %lu %lu %lu\n", cnt++, delta_cpu, delta_lpm,
-         delta_tx, delta_rx);
+  LOG_DEBUG("Energest: %u %lu %lu %lu %lu", cnt++, delta_cpu, delta_lpm,
+            delta_tx, delta_rx);
 }
 
 PROCESS_THREAD(energest_process, ev, data) {
