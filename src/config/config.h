@@ -24,6 +24,8 @@
 #define CONNECTION_BEACON_MAX_CONNECTIONS (3)
 
 /* --- ETC --- */
+/* FIXME Rimuovi etc please */
+
 /**
  * @brief Starting channel (ETC may use multiple channels).
  */
