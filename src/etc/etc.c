@@ -53,7 +53,7 @@ void etc_close(struct etc_conn_t *conn) {
 
 /* --- CONTROLLER--- */
 int etc_command(struct etc_conn_t *conn, const linkaddr_t *dest,
-                command_type_t command, uint32_t threshold) {
+                enum command_type_t command, uint32_t threshold) {
   /* Prepare and send command */
 }
 

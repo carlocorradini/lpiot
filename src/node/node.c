@@ -10,7 +10,7 @@
  * A node can have only one role.
  * To not recalculate it cache it.
  */
-static node_role_t node_role_cache = NODE_ROLE_UNKNOWN;
+static enum node_role_t node_role_cache = NODE_ROLE_UNKNOWN;
 
 /**
  * @brief String representation of node roles.
@@ -18,7 +18,7 @@ static node_role_t node_role_cache = NODE_ROLE_UNKNOWN;
 static const char const* node_role_strings[] = {"UNKNOWN", "CONTROLLER",
                                                 "SENSOR/ACTUATOR", "FORWARDER"};
 
-node_role_t node_get_role(void) {
+enum node_role_t node_get_role(void) {
   size_t i;
 
   /* Check in cache */

@@ -50,7 +50,7 @@ struct etc_callbacks_t {
    * @param threshold New threshold.
    */
   void (*command_cb)(const linkaddr_t *event_source, uint16_t event_seqn,
-                     command_type_t command, uint32_t threshold);
+                     enum command_type_t command, uint32_t threshold);
 };
 
 /**
@@ -126,7 +126,7 @@ void etc_close(struct etc_conn_t *conn);
  * @return int Command status
  */
 int etc_command(struct etc_conn_t *conn, const linkaddr_t *dest,
-                command_type_t command, uint32_t threshold);
+                enum command_type_t command, uint32_t threshold);
 
 /* --- SENSOR --- */
 /**

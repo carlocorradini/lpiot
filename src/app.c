@@ -29,7 +29,7 @@ PROCESS_THREAD(app_process, ev, data) {
            linkaddr_node_addr.u8[1]);
 
   while (true) {
-    const node_role_t node_role = node_get_role();
+    const enum node_role_t node_role = node_get_role();
 
     if (node_role == NODE_ROLE_CONTROLLER) {
       controller_init(&etc_conn);

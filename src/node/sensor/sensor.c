@@ -36,7 +36,7 @@ static void sensor_timer_cb(void *ptr);
  * @param threshold New threshold.
  */
 static void command_cb(const linkaddr_t *event_source, uint16_t event_seqn,
-                       command_type_t command, uint32_t threshold);
+                       enum command_type_t command, uint32_t threshold);
 
 /**
  * @brief Connection.
@@ -82,7 +82,7 @@ static void sensor_timer_cb(void *ptr) {
 }
 
 static void command_cb(const linkaddr_t *event_source, uint16_t event_seqn,
-                       command_type_t command, uint32_t threshold) {
+                       enum command_type_t command, uint32_t threshold) {
   LOG_INFO("Actuation [%02x:%02x, %u] %02x:%02x", event_source->u8[0],
            event_source->u8[1], event_seqn, linkaddr_node_addr.u8[0],
            linkaddr_node_addr.u8[1]);

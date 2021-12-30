@@ -12,7 +12,7 @@ typedef struct {
   bool reading_available;
   uint32_t value;
   uint32_t threshold;
-  command_type_t command;
+  enum command_type_t command;
 } sensor_reading_t;
 
 /**

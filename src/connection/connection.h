@@ -63,7 +63,8 @@ struct broadcast_hdr_t {
 /**
  * @brief Unicast message types.
  */
-enum unicast_msg_type_t {}
+/*FIXME*/
+enum unicast_msg_type_t { FIXME };
 
 /**
  * @brief Unicast header.
