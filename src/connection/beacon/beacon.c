@@ -138,7 +138,7 @@ void beacon_recv_cb(const struct broadcast_hdr_t *header,
       sender->u8[0], sender->u8[1], rssi, beacon_msg.seqn, beacon_msg.hopn);
 
   /* Analyze received beacon message */
-  if (rssi < ETC_RSSI_THRESHOLD) return;             /* Too Weak */
+  if (rssi < CONNECTION_RSSI_THRESHOLD) return;      /* Too Weak */
   if (beacon_msg.seqn < connections[0].seqn) return; /* Old */
   if (beacon_msg.seqn == connections[0].seqn) {
     /* Same sequence number, check... */
@@ -176,7 +176,8 @@ void beacon_recv_cb(const struct broadcast_hdr_t *header,
              connections[0].parent_node.u8[0], connections[0].parent_node.u8[1],
              connections[0].hopn, connections[0].rssi);
     /* Schedule beacon message propagation only if best */
-    ctimer_set(&beacon_timer, ETC_BEACON_FORWARD_DELAY, beacon_timer_cb, NULL);
+    ctimer_set(&beacon_timer, CONNECTION_BEACON_FORWARD_DELAY, beacon_timer_cb,
+               NULL);
   } else
     LOG_DEBUG("Backup parent %02x:%02x at %d: { hopn: %u, rssi: %d }",
               connections[0].parent_node.u8[0],
@@ -198,7 +199,8 @@ static void beacon_timer_cb(void *ignored) {
     /* Increase beacon sequence number */
     connections[0].seqn += 1;
     /* Schedule next beacon message flood */
-    ctimer_set(&beacon_timer, ETC_BEACON_INTERVAL, beacon_timer_cb, NULL);
+    ctimer_set(&beacon_timer, CONNECTION_BEACON_INTERVAL, beacon_timer_cb,
+               NULL);
   }
 }
 
@@ -215,7 +217,7 @@ static void reset_connections_idx(size_t index) {
   linkaddr_copy(&connections[index].parent_node, &linkaddr_null);
   connections[index].seqn = 0;
   connections[index].hopn = UINT16_MAX;
-  connections[index].rssi = ETC_RSSI_THRESHOLD;
+  connections[index].rssi = CONNECTION_RSSI_THRESHOLD;
 }
 
 static void shift_right_connections(size_t from) {

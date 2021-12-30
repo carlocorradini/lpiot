@@ -95,7 +95,7 @@ void controller_init(void) {
   num_sensor_readings = 0;
 
   /* Open ETC connection */
-  etc_open(ETC_FIRST_CHANNEL, &cb);
+  etc_open(CONNECTION_CHANNEL, &cb);
 }
 
 static void receive_cb(const linkaddr_t *event_source, uint16_t event_seqn,

@@ -5,5 +5,5 @@
 
 void forwarder_init(void) {
   /* Open ETC connection */
-  etc_open(ETC_FIRST_CHANNEL, NULL);
+  etc_open(CONNECTION_CHANNEL, NULL);
 }

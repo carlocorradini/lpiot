@@ -53,7 +53,7 @@ void sensor_init(size_t index) {
   ctimer_set(&sensor_timer, SENSOR_UPDATE_INTERVAL, sensor_timer_cb, NULL);
 
   /* Open ETC connection */
-  etc_open(ETC_FIRST_CHANNEL, &etc_cb);
+  etc_open(CONNECTION_CHANNEL, &etc_cb);
 }
 
 uint32_t sensor_get_value(void) { return sensor_value; }

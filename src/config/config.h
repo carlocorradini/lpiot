@@ -19,28 +19,33 @@
 
 /* --- CONNECTION --- */
 /**
+ * @brief Channel(s) on which the connection will operate.
+ */
+#define CONNECTION_CHANNEL (0xAA)
+
+/**
+ * @brief RSSI threshold.
+ */
+#define CONNECTION_RSSI_THRESHOLD (-95)
+
+/**
  * @brief Maximum number of connections to store
  */
 #define CONNECTION_BEACON_MAX_CONNECTIONS (3)
-
-/* --- ETC --- */
-/* FIXME Rimuovi etc please */
-
-/**
- * @brief Starting channel (ETC may use multiple channels).
- */
-#define ETC_FIRST_CHANNEL (0xAA)
 
 /**
  * @brief Interval to (re)create the connections tree.
  * Valid only if the node is a Controller.
  */
-#define ETC_BEACON_INTERVAL (CLOCK_SECOND * 30)
+#define CONNECTION_BEACON_INTERVAL (CLOCK_SECOND * 30)
 
 /**
  * @brief Time to wait before sending a beacon message.
  */
-#define ETC_BEACON_FORWARD_DELAY (random_rand() % CLOCK_SECOND)
+#define CONNECTION_BEACON_FORWARD_DELAY (random_rand() % CLOCK_SECOND)
+
+/* --- ETC --- */
+/* FIXME Rimuovi etc please */
 
 /**
  * @brief Time to wait before sending an event message.
@@ -68,11 +73,6 @@
  */
 #define ETC_SUPPRESSION_TIMEOUT_END (CLOCK_SECOND / 2)
 
-/**
- * @brief RSSI threshold.
- */
-#define ETC_RSSI_THRESHOLD (-95)
-
 /* --- CONTROLLER --- */
 /**
  * @brief Controller address.
@@ -95,7 +95,7 @@ extern const linkaddr_t CONTROLLER;
 #define CONTROLLER_CRITICAL_DIFF (15000)
 
 /**
- * @brief Interval to collect sensor's values.
+ * @brief Time to wait before analyzing the Sensor readings.
  */
 #define CONTROLLER_COLLECT_WAIT (CLOCK_SECOND * 10)
 
