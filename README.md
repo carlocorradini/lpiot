@@ -14,6 +14,12 @@
 $ make
 ```
 
+### Debug
+
+```bash
+$ make DEBUG=true
+```
+
 ### Checks
 
 ```bash
@@ -22,7 +28,7 @@ $ make CHECKS=true
 
 #### Filter
 
-> Filter only for source files
+> Filter only project source files
 
 ```bash
 $ { make CHECKS=true 1>&2; } 2>&1 | sed '/contiki/d'
