@@ -4,7 +4,7 @@
 /**
  * @brief Node roles.
  */
-typedef enum {
+enum node_role_t {
   /**
    * @brief Unknown role.
    */
@@ -21,12 +21,12 @@ typedef enum {
    * @brief Forwarder node.
    */
   NODE_ROLE_FORWARDER
-} node_role_t;
+};
 
 /**
  * @brief Command types.
  */
-typedef enum {
+enum command_type_t {
   /**
    * @brief Don't do anything (ignore).
    */
@@ -40,14 +40,14 @@ typedef enum {
    * increased.
    */
   COMMAND_TYPE_THRESHOLD
-} command_type_t;
+};
 
 /**
  * @brief Return the role of the node.
  *
  * @return Node role.
  */
-node_role_t node_get_role(void);
+enum node_role_t node_get_role(void);
 
 /**
  * @brief Return the role name of the node.

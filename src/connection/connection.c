@@ -35,10 +35,25 @@ static const struct broadcast_callbacks bc_cb = {.recv = bc_recv_cb,
  */
 static struct unicast_conn uc_conn;
 
+/**
+ * @brief Unicast receive callback.
+ *
+ * @param uc_conn Unicast connection.
+ * @param sender Address of the sender node.
+ */
+static void uc_recv_cb(struct unicast_conn *uc_conn, const linkaddr_t *sender);
+
+/**
+ * @brief Unicast callback structure.
+ */
+static const struct unicast_callbacks uc_cb = {.recv = uc_recv_cb,
+                                               .sent = NULL};
+
 /* --- --- */
 void connection_init(uint16_t channel) {
-  /* Open the underlying Rime primitive */
+  /* Open the underlying rime primitive */
   broadcast_open(&bc_conn, channel, &bc_cb);
+  unicast_open(&uc_conn, channel + 1, &uc_cb);
 
   /* Initialize beacon */
   beacon_init(best_conn);
@@ -102,6 +117,33 @@ static void bc_recv_cb(struct broadcast_conn *bc_conn,
     default: {
       LOG_WARN("Received broadcast message of unknown type: %d",
                bc_header.type);
+      break;
+    }
+  }
+}
+
+static void uc_recv_cb(struct unicast_conn *uc_conn, const linkaddr_t *sender) {
+  struct unicast_hdr_t uc_header;
+
+  /* Check received unicast message validity */
+  if (packetbuf_datalen() < sizeof(uc_header)) {
+    LOG_ERROR("Unicast message wrong size: %u byte", packetbuf_datalen());
+    return;
+  }
+
+  /* Copy header */
+  memcpy(&uc_header, packetbuf_dataptr(), sizeof(uc_header));
+
+  /* Reduce header in packetbuf */
+  if (!packetbuf_hdrreduce(sizeof(uc_header))) {
+    LOG_ERROR("Error reducing unicast header");
+    return;
+  }
+
+  /* Forward to correct callback */
+  switch (uc_header.type) {
+    default: {
+      LOG_WARN("Received unicast message of unknown type: %d", uc_header.type);
       break;
     }
   }

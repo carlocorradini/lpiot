@@ -60,6 +60,20 @@ struct broadcast_hdr_t {
 } __attribute__((packed));
 
 /* --- UNICAST --- */
+/**
+ * @brief Unicast message types.
+ */
+enum unicast_msg_type_t {}
+
+/**
+ * @brief Unicast header.
+ */
+struct unicast_hdr_t {
+  /**
+   * @brief Type of message.
+   */
+  enum unicast_msg_type_t type;
+} __attribute__((packed));
 
 /* --- --- */
 /**
