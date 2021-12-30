@@ -12,8 +12,8 @@ static enum log_level_t log_level = LOGGER_LEVEL;
 /**
  * @brief String representation of log levels.
  */
-static const char* log_level_strings[] = {"TRACE", "DEBUG", "INFO",
-                                          "WARN",  "ERROR", "FATAL"};
+static const char const* log_level_strings[] = {"TRACE", "DEBUG", "INFO",
+                                                "WARN",  "ERROR", "FATAL"};
 
 void logger_log(enum log_level_t level, const char* file, int line,
                 const char* fmt, ...) {

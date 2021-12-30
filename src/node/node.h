@@ -6,6 +6,10 @@
  */
 typedef enum {
   /**
+   * @brief Unknown role.
+   */
+  NODE_ROLE_UNKNOWN,
+  /**
    * @brief Controller node.
    */
   NODE_ROLE_CONTROLLER,
@@ -37,5 +41,19 @@ typedef enum {
    */
   COMMAND_TYPE_THRESHOLD
 } command_type_t;
+
+/**
+ * @brief Return the role of the node.
+ *
+ * @return Node role.
+ */
+node_role_t node_get_role(void);
+
+/**
+ * @brief Return the role name of the node.
+ *
+ * @return Node role name.
+ */
+const char const* node_get_role_name(void);
 
 #endif

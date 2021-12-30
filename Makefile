@@ -41,14 +41,14 @@ PROJECTDIRS += src \
 			   src/connection src/connection/beacon \
 			   src/etc \
 			   src/logger \
-			   src/node/controller src/node/forwarder src/node/sensor \
+			   src/node src/node/controller src/node/forwarder src/node/sensor \
 			   src/tool
 PROJECT_SOURCEFILES += \
 					   config.c \
 					   connection.c beacon.c \
 					   etc.c \
 					   logger.c \
-					   controller.c forwarder.c sensor.c \
+					   node.c controller.c forwarder.c sensor.c \
 					   simple-energest.c
 
 # --- RECIPES

@@ -6,6 +6,7 @@
 #include "logger/logger.h"
 #include "node/controller/controller.h"
 #include "node/forwarder/forwarder.h"
+#include "node/node.h"
 #include "node/sensor/sensor.h"
 #include "tool/simple-energest.h"
 
@@ -24,33 +25,30 @@ PROCESS_THREAD(app_process, ev, data) {
   /* Start energest */
   simple_energest_start();
 
-  LOG_INFO("I am node %02x:%02x", linkaddr_node_addr.u8[0],
+  LOG_INFO("I am %s %02x:%02x", node_get_role_name(), linkaddr_node_addr.u8[0],
            linkaddr_node_addr.u8[1]);
 
   while (true) {
-    if (linkaddr_cmp(&CONTROLLER, &linkaddr_node_addr)) {
-      /* --- Controller */
+    const node_role_t node_role = node_get_role();
+
+    if (node_role == NODE_ROLE_CONTROLLER) {
       controller_init(&etc_conn);
-      LOG_INFO("Controller started");
-    } else {
-      bool is_sensor = false;
+    } else if (node_role == NODE_ROLE_SENSOR_ACTUATOR) {
       size_t i;
       for (i = 0; i < NUM_SENSORS; ++i) {
         if (linkaddr_cmp(&SENSORS[i], &linkaddr_node_addr)) {
-          /* --- Sensor/Actuator */
-          is_sensor = true;
           sensor_init(&etc_conn, i);
-          LOG_INFO("Sensor/Actuator started");
           break;
         }
       }
-
-      if (!is_sensor) {
-        /* --- Forwarder */
-        forwarder_init(&etc_conn);
-        LOG_INFO("Forwarder started");
-      }
+    } else if (node_role == NODE_ROLE_FORWARDER) {
+      forwarder_init(&etc_conn);
+    } else {
+      LOG_FATAL("Unknown role. Terminating...");
+      break;
     }
+
+    LOG_INFO("Node started");
 
     /* Wait button press | Node failure simulation */
     PROCESS_WAIT_EVENT_UNTIL(ev == sensors_event);
