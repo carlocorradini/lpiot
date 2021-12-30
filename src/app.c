@@ -1,10 +1,9 @@
 #include <dev/button-sensor.h>
 #include <dev/leds.h>
 #include <net/netstack.h>
-#include <stdbool.h>
-#include <stdio.h>
 
 #include "config/config.h"
+#include "logger/logger.h"
 #include "node/controller/controller.h"
 #include "node/forwarder/forwarder.h"
 #include "node/sensor/sensor.h"
@@ -25,14 +24,14 @@ PROCESS_THREAD(app_process, ev, data) {
   /* Start energest */
   simple_energest_start();
 
-  printf("[APP]: I am node %02x:%02x\n", linkaddr_node_addr.u8[0],
-         linkaddr_node_addr.u8[1]);
+  LOG_INFO("I am node %02x:%02x", linkaddr_node_addr.u8[0],
+           linkaddr_node_addr.u8[1]);
 
   while (true) {
     if (linkaddr_cmp(&CONTROLLER, &linkaddr_node_addr)) {
       /* --- Controller */
       controller_init(&etc_conn);
-      printf("[APP]: Controller started\n");
+      LOG_INFO("Controller started");
     } else {
       bool is_sensor = false;
       size_t i;
@@ -41,7 +40,7 @@ PROCESS_THREAD(app_process, ev, data) {
           /* --- Sensor/Actuator */
           is_sensor = true;
           sensor_init(&etc_conn, i);
-          printf("[APP]: Sensor/Actuator started\n");
+          LOG_INFO("Sensor/Actuator started");
           break;
         }
       }
@@ -49,20 +48,20 @@ PROCESS_THREAD(app_process, ev, data) {
       if (!is_sensor) {
         /* --- Forwarder */
         forwarder_init(&etc_conn);
-        printf("[APP]: Forwarder started\n");
+        LOG_INFO("Forwarder started");
       }
     }
 
     /* Wait button press | Node failure simulation */
     PROCESS_WAIT_EVENT_UNTIL(ev == sensors_event);
-    printf("[APP]: Simulating node failure\n");
+    LOG_WARN("Simulating node failure");
     etc_close(&etc_conn);
     NETSTACK_MAC.off(false);
     leds_on(LEDS_RED);
 
     /* Wait button press | Node failure recovery */
     PROCESS_WAIT_EVENT_UNTIL(ev == sensors_event);
-    printf("[APP]: Simulating node recovery\n");
+    LOG_WARN("Simulating node recovery");
     NETSTACK_MAC.on();
     leds_off(LEDS_RED);
   }

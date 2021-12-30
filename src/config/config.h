@@ -5,6 +5,18 @@
 #include <net/linkaddr.h>
 #include <sys/clock.h>
 
+#include "logger/logger.h"
+
+/* --- LOGGER --- */
+/**
+ * @brief Logger level.
+ */
+#ifndef DEBUG
+#define LOGGER_LEVEL LOG_LEVEL_INFO
+#else
+#define LOGGER_LEVEL LOG_LEVEL_DEBUG
+#endif
+
 /* --- CONNECTION --- */
 /**
  * @brief Maximum number of connections to store
