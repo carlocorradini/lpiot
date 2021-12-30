@@ -34,7 +34,7 @@ struct connection_t {
  * Represents the best connection for communication
  * in the architecture.
  */
-extern const struct connection_t* const best_conn;
+extern const struct connection_t *const best_conn;
 
 /**
  * @brief Initialize node connection(s).
