@@ -2,8 +2,6 @@
 #define _ETC_H_
 
 #include <net/linkaddr.h>
-#include <net/rime/unicast.h>
-#include <stdbool.h>
 #include <sys/ctimer.h>
 
 #include "node/node.h"
@@ -19,12 +17,12 @@ struct etc_callbacks_t {
    *
    * @param event_source Address of the sensor that generated the event.
    * @param event_seqn Event sequence number.
-   * @param source Address of the source sensor.
-   * @param value Sensor's value.
-   * @param threshold Sensor's threshold.
+   * @param sender Address of the sender node.
+   * @param value Sensor value.
+   * @param threshold Sensor threshold.
    */
   void (*receive_cb)(const linkaddr_t *event_source, uint16_t event_seqn,
-                     const linkaddr_t *source, uint32_t value,
+                     const linkaddr_t *sender, uint32_t value,
                      uint32_t threshold);
 
   /**
@@ -54,101 +52,63 @@ struct etc_callbacks_t {
 };
 
 /**
- * @brief Connection object.
+ * @brief Event object.
  */
-struct etc_conn_t {
+struct etc_event_t {
   /**
-   * @brief Unicast connection object.
+   * @brief Sequence number.
    */
-  struct unicast_conn uc;
-
-  /* --- Callbacks */
+  uint16_t seqn;
   /**
-   * @brief Application callbacks.
+   * @brief Address of the generator node.
    */
-  const struct etc_callbacks_t *callbacks;
-
-  /* --- Timer(s) */
-  /**
-   * @brief Stop the generation of new events.
-   */
-  struct ctimer suppression_timer;
-
-  /**
-   * @brief Stop (temporarily) the propagation of events from other nodes.
-   */
-  struct ctimer suppression_prop_timer;
-
-  /* --- Event */
-  /**
-   * @brief Current handled event node address handled.
-   */
-  linkaddr_t event_source;
-
-  /**
-   * @brief Current handled event sequence number.
-   */
-  uint16_t event_seqn;
+  linkaddr_t source;
 };
 
 /**
- * @brief Initialize an ETC connection.
+ * @brief Open an ETC connection.
  *
- * @param conn Pointer to a ETC connection object.
- * @param channels Starting channel (ETC may use multiple channels).
+ * @param channel Channel(s) on which the connection will operate.
  * @param callbacks Pointer to the callback structure.
- * @param sensors Addresses of sensors.
- * @param num_sensors Number of sensors.
- *
- * @return true ETC connection succeeded.
- * @return false ETC connection failed.
  */
-bool etc_open(struct etc_conn_t *conn, uint16_t channels,
-              const struct etc_callbacks_t *callbacks,
-              const linkaddr_t *sensors, uint8_t num_sensors);
+void etc_open(uint16_t channel, const struct etc_callbacks_t *callbacks);
 
 /**
- * @brief Terminate an ETC connection.
- *
- * @param conn Pointer to an ETC connection object.
+ * @brief Close an ETC connection.
  */
-void etc_close(struct etc_conn_t *conn);
-
-/* --- CONTROLLER --- */
-/**
- * @brief Send command(s) to a given destination node.
- * Used only by the Controller.
- *
- * @param conn Pointer to an ETC connection object.
- * @param dest Destination node address.
- * @param command Command to send.
- * @param threshold New threshold.
- * @return int Command status
- */
-int etc_command(struct etc_conn_t *conn, const linkaddr_t *dest,
-                enum command_type_t command, uint32_t threshold);
-
-/* --- SENSOR --- */
-/**
- * @brief Share the most recent sensed value.
- * Used only by Sensor(s).
- *
- * @param value Sensed value.
- * @param threshold Current threshold.
- */
-void etc_update(uint32_t value, uint32_t threshold);
+void etc_close(void);
 
 /**
- * @brief Start event dissemination (unless events are suppressed to avoid
- * contention).
- * Used only by Sensor(s).
+ * @brief Return the current event.
+ *
+ * @return Evenet data.
+ */
+const struct etc_event_t *etc_get_current_event(void);
+
+/**
+ * @brief Start event dissemination.
+ * If events are suppressed no dissemination to avoid contention.
+ * Used only by Sensor node.
  * Returns 0 if new events are currently suppressed.
  *
- * @param conn Pointer to an ETC connection object.
  * @param value Sensed value.
  * @param threshold Current threshold.
- * @return int Trigger status
+ * @return
  */
-int etc_trigger(struct etc_conn_t *conn, uint32_t value, uint32_t threshold);
+/* FIXME RETURN */
+int etc_trigger(uint32_t value, uint32_t threshold);
+
+/**
+ * @brief Send the command to the receiver node.
+ * Used only by Controller node.
+ *
+ * @param receiver Receiver node address.
+ * @param command Command to send.
+ * @param threshold New threshold.
+ * @return
+ */
+/* FIXME RETURN */
+int etc_command(const linkaddr_t *receiver, enum command_type_t command,
+                uint32_t threshold);
 
 #endif

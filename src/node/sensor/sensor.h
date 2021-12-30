@@ -1,16 +1,28 @@
 #ifndef _NODE_SENSOR_H_
 #define _NODE_SENSOR_H_
 
+#include <stddef.h>
 #include <sys/types.h>
-
-#include "etc/etc.h"
 
 /**
  * @brief Initialize Sensor/Actuator node.
  *
- * @param conn Pointer to an ETC connection object.
- * @param sensor_index Sensor index.
+ * @param index Sensor index.
  */
-void sensor_init(struct etc_conn_t *conn, size_t sensor_index);
+void sensor_init(size_t index);
+
+/**
+ * @brief Return last sensed value.
+ *
+ * @return Last value.
+ */
+uint32_t sensor_get_value(void);
+
+/**
+ * @brief Return current threshold.
+ *
+ * @return Current threshold.
+ */
+uint32_t sensor_get_threshold(void);
 
 #endif

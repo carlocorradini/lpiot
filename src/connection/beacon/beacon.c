@@ -92,6 +92,12 @@ void beacon_init(const struct connection_t *best_connection) {
   }
 }
 
+void beacon_terminate(void) {
+  /* FIXME I timer??? */
+  /* FIXME Resetto anche la connessione o no? */
+  reset_connections();
+}
+
 static void send_beacon_message(const struct beacon_msg_t *beacon_msg) {
   /* Prepare packetbuf */
   packetbuf_clear();

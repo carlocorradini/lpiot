@@ -1,7 +1,9 @@
 #include "sensor.h"
 
 #include "config/config.h"
+#include "etc/etc.h"
 #include "logger/logger.h"
+#include "node/node.h"
 
 /**
  * @brief Last (current) sensed value.
@@ -21,10 +23,9 @@ static struct ctimer sensor_timer;
 /**
  * @brief Periodic function to update the sensed value (and trigger events).
  *
- * @param ptr An opaque pointer that will be supplied as an argument to the
- * callback function.
+ * @param ignored
  */
-static void sensor_timer_cb(void *ptr);
+static void sensor_timer_cb(void *ignored);
 
 /**
  * @brief Command reception callback.
@@ -39,41 +40,39 @@ static void command_cb(const linkaddr_t *event_source, uint16_t event_seqn,
                        enum command_type_t command, uint32_t threshold);
 
 /**
- * @brief Connection.
- */
-static struct etc_conn_t *etc_conn = NULL;
-
-/**
  * @brief Callbacks.
  */
-static const struct etc_callbacks_t cb = {
+static const struct etc_callbacks_t etc_cb = {
     .receive_cb = NULL, .event_cb = NULL, .command_cb = command_cb};
 
-void sensor_init(struct etc_conn_t *conn, size_t sensor_index) {
-  etc_conn = conn;
-  sensor_value = SENSOR_INITIAL_VALUE * sensor_index;
+void sensor_init(size_t index) {
+  sensor_value = SENSOR_INITIAL_VALUE * index;
   sensor_threshold = CONTROLLER_MAX_DIFF;
 
   /* Periodic update of the sensed value */
   ctimer_set(&sensor_timer, SENSOR_UPDATE_INTERVAL, sensor_timer_cb, NULL);
 
-  /* Open connection */
-  etc_open(etc_conn, ETC_FIRST_CHANNEL, &cb, SENSORS, NUM_SENSORS);
+  /* Open ETC connection */
+  etc_open(ETC_FIRST_CHANNEL, &etc_cb);
 }
 
-static void sensor_timer_cb(void *ptr) {
+uint32_t sensor_get_value(void) { return sensor_value; }
+
+uint32_t sensor_get_threshold(void) { return sensor_threshold; }
+
+static void sensor_timer_cb(void *ignored) {
   /* Increase sensor value */
   sensor_value += SENSOR_UPDATE_INCREMENT;
-
-  etc_update(sensor_value, sensor_threshold);
   LOG_INFO("Reading { value: %lu, threshold: %lu }", sensor_value,
            sensor_threshold);
 
+  /* Check threshold */
   if (sensor_value > sensor_threshold) {
-    int ret = etc_trigger(etc_conn, sensor_value, sensor_threshold);
+    int ret = etc_trigger(sensor_value, sensor_threshold);
     if (ret) {
-      LOG_INFO("Trigger [%02x:%02x, %u]", etc_conn->event_source.u8[0],
-               etc_conn->event_source.u8[1], etc_conn->event_seqn);
+      const struct etc_event_t *event = etc_get_current_event();
+      LOG_INFO("Trigger [%02x:%02x, %u]", event->source.u8[0],
+               event->source.u8[1], event->seqn);
     }
   }
 
@@ -89,12 +88,12 @@ static void command_cb(const linkaddr_t *event_source, uint16_t event_seqn,
 
   switch (command) {
     case COMMAND_TYPE_NONE: {
-      LOG_INFO("Received COMMAND_TYPE_NONE. Ignoring it...");
+      LOG_INFO("Received COMMAND_TYPE_NONE: Ignoring it...");
       break;
     }
     case COMMAND_TYPE_RESET: {
       LOG_INFO(
-          "Received COMMAND_TYPE_RESET. From "
+          "Received COMMAND_TYPE_RESET: From "
           "{ value: %lu, threshold: %lu } to "
           "{ value: %lu, threshold: %lu }",
           sensor_value, sensor_threshold, (uint32_t)0,
@@ -106,7 +105,7 @@ static void command_cb(const linkaddr_t *event_source, uint16_t event_seqn,
     }
     case COMMAND_TYPE_THRESHOLD: {
       LOG_INFO(
-          "Received COMMAND_TYPE_THRESHOLD. From "
+          "Received COMMAND_TYPE_THRESHOLD: From "
           "{ value: %lu, threshold: %lu } to "
           "{ value: %lu, threshold: %lu }",
           sensor_value, sensor_threshold, sensor_value, threshold);

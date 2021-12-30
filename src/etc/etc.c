@@ -1,213 +1,99 @@
 #include "etc.h"
 
-#include <stdio.h>
-
 #include "config/config.h"
-#include "connection/beacon/beacon.h"
 #include "connection/connection.h"
+#include "net/packetbuf.h"
 
-/* --- Topology information (parents, metrics...) */
-/* ... */
-
-/* --- Forwarders (routes to sensors/actuators) */
-/* ... */
-
-/* --- Declarations for the callbacks of dedicated connection objects */
 /**
- * @brief Data receive callback.
- *
- * @param uc_conn Unicast connection.
- * @param sender Address of the sender node.
+ * @brief ETC callback(s) to interact with the node.
  */
-static void unicast_recv(struct unicast_conn *uc_conn,
-                         const linkaddr_t *sender);
-
-/* --- Rime Callback structures */
+static const struct etc_callbacks_t *cb;
 
 /**
- * @brief Callback structure for unicast.
+ * @brief Current event.
  */
-static struct unicast_callbacks unicast_cb = {.recv = unicast_recv,
-                                              .sent = NULL};
+static struct etc_event_t event;
 
-/*---------------------------------------------------------------------------*/
-/*                           Application Interface                           */
-/*---------------------------------------------------------------------------*/
-bool etc_open(struct etc_conn_t *conn, uint16_t channels,
-              const struct etc_callbacks_t *callbacks,
-              const linkaddr_t *sensors, uint8_t num_sensors) {
-  /* Initialize connector structure */
-  conn->callbacks = callbacks;
-
-  /* Initialize sensors forwarding structure */
-
-  /* Open the underlying Rime primitives */
-  connection_init(channels);
-  unicast_open(&conn->uc, channels + 1, &unicast_cb);
-}
-
-void etc_close(struct etc_conn_t *conn) {
-  /* Turn off connections to ignore any incoming packet
-   * and stop transmitting */
-}
-
-/* --- CONTROLLER--- */
-int etc_command(struct etc_conn_t *conn, const linkaddr_t *dest,
-                enum command_type_t command, uint32_t threshold) {
-  /* Prepare and send command */
-}
-
-/* --- SENSOR --- */
-void etc_update(uint32_t value, uint32_t threshold) {
-  /* Update local value and threshold, to be sent in case of event */
-}
-
-/*---------------------------------------------------------------------------*/
-/*                               Event Handling                              */
-/*---------------------------------------------------------------------------*/
 /**
- * @brief  Event message structure.
- * Combining event source (address of the sensor
- * generating the event) and the sequence number.
+ * @brief  Event message.
  */
 struct event_msg_t {
+  /**
+   * @brief Address of the sensor that generated the event.
+   */
   linkaddr_t event_source;
+  /**
+   * @brief Event sequence number.
+   */
   uint16_t event_seqn;
 } __attribute__((packed));
 
-int etc_trigger(struct etc_conn_t *conn, uint32_t value, uint32_t threshold) {
+/* FIXME Mumble on header */
+/**
+ * @brief Header structure for data packets.
+ */
+struct collect_msg_t {
+  /**
+   * @brief Address of the sensor that generated the event.
+   */
+  linkaddr_t event_source;
+  /**
+   * @brief Event sequence number.
+   */
+  uint16_t event_seqn;
+} __attribute__((packed));
+
+/* FIXME Mumble on header */
+/**
+ * @brief Header structure for command packets.
+ */
+struct command_msg_t {
+  /**
+   * @brief Address of the sensor that generated the event.
+   */
+  linkaddr_t event_source;
+  /**
+   * @brief Event sequence number.
+   */
+  uint16_t event_seqn;
+} __attribute__((packed));
+
+void etc_open(uint16_t channel, const struct etc_callbacks_t *callbacks) {
+  cb = callbacks;
+  event.seqn = 0;
+  linkaddr_copy(&event.source, &linkaddr_null);
+
+  /* Open connection */
+  connection_open(channel);
+}
+
+void etc_close(void) {
+  /* Reset */
+  cb = NULL;
+  event.seqn = 0;
+  linkaddr_copy(&event.source, &linkaddr_null);
+
+  /* Close connection */
+  connection_close();
+}
+
+const struct etc_event_t *etc_get_current_event(void) { return &event; }
+
+int etc_trigger(uint32_t value, uint32_t threshold) {
   /* Prepare event message */
   struct event_msg_t event_msg;
+  event_msg.event_seqn = event.seqn;
   linkaddr_copy(&event_msg.event_source, &linkaddr_node_addr);
-  event_msg.event_seqn = 99l;
 
   /* Prepare packetbuf */
   packetbuf_clear();
   packetbuf_copyfrom(&event_msg, sizeof(struct event_msg_t));
 
-  /* Send beacon message in broadcast */
+  /* Send event message in broadcast */
   return connection_broadcast_send(BROADCAST_MSG_TYPE_BEACON);
-
-  /* Prepare event message */
-
-  /* Suppress other events for a given time window */
-
-  /* Send event */
 }
 
-/*---------------------------------------------------------------------------*/
-/*                               Data Handling                               */
-/*---------------------------------------------------------------------------*/
-/**
- * @brief Header structure for data packets.
- */
-struct collect_msg_t {
-  linkaddr_t event_source;
-  uint16_t event_seqn;
-  uint8_t hops;
-} __attribute__((packed));
-
-/**
- * @brief Send collect message towards the Controller node.
- * Returns:
- *  -1 Node is disconnected (no parent).
- *  -2 packetbuf_hdralloc(...) error.
- *  ?  unicast_send(...) return code.
- *
- * @param conn Pointer to an ETC connection object.
- * @return int Status code.
- */
-static int send_collect_message(struct etc_conn_t *conn) {
-  /* Prepare collect message */
-  struct collect_msg_t message = {.event_source = linkaddr_node_addr,
-                                  .event_seqn = 0,
-                                  /*FIXME SEQUENCE hardcoded!*/ .hops = 0};
-  const linkaddr_t *parent_node = &best_conn->parent_node;
-
-  /* Check if node is disconnected (no parent) */
-  if (linkaddr_cmp(parent_node, &linkaddr_null)) return -1;
-
-  /* Check if header could be extended */
-  if (!packetbuf_hdralloc(sizeof(struct collect_msg_t))) return -2;
-
-  /* Insert header in the packet buffer */
-  memcpy(packetbuf_hdrptr(), &message, sizeof(message));
-
-  /* TODO Finish better */
-  /*printf("[ETC]: Sending collect message to %02x:%02x\n", parent_node->u8[0],
-         parent_node.u8[1]);*/
-
-  /* Send packet to parent node */
-  return unicast_send(&conn->uc, parent_node);
+int etc_command(const linkaddr_t *receiver, enum command_type_t command,
+                uint32_t threshold) {
+  /* Prepare and send command */
 }
-
-static void unicast_recv(struct unicast_conn *uc_conn,
-                         const linkaddr_t *sender) {
-  struct etc_conn_t *conn;
-  struct collect_msg_t header;
-
-  conn = (struct etc_conn_t *)(((uint8_t *)uc_conn) -
-                               offsetof(struct etc_conn_t, uc));
-
-  /* Check received unicast message validity */
-  if (packetbuf_datalen() < sizeof(struct collect_msg_t)) {
-    printf("[ETC]: Unicast message of wrong size: %d\n", packetbuf_datalen());
-    return;
-  }
-
-  /* Extract header */
-  memcpy(&header, packetbuf_dataptr(), sizeof(header));
-  /* Update hop count */
-  header.hops = header.hops + 1;
-  printf("[ETC]: Data packet rcvd -- source: %02x:%02x, hops: %u\n",
-         header.event_source.u8[0], header.event_source.u8[1], header.hops);
-
-  switch (node_get_role()) {
-    case NODE_ROLE_CONTROLLER: {
-      /* Remove header to make packetbuf_dataptr() point to the beginning of
-       * the application payload */
-      if (packetbuf_hdrreduce(sizeof(struct collect_msg_t))) {
-        /* FIXME Parametri dal payload */
-        /* Call controller callback function */
-        conn->callbacks->receive_cb(&header.event_source, header.event_seqn,
-                                    NULL, 7, 7);
-      } else {
-        printf("[ETC]: ERROR, header could not be reduced!");
-      }
-
-      break;
-    }
-    case NODE_ROLE_SENSOR_ACTUATOR:
-    case NODE_ROLE_FORWARDER: {
-      const linkaddr_t *parent_node = &best_conn->parent_node;
-
-      /* Detect parent node disconnection */
-      if (linkaddr_cmp(parent_node, &linkaddr_null)) {
-        printf(
-            "[ETC]: ERROR, unable to forward data packet -- "
-            "source: %02x:%02x, hops: %u\n",
-            header.event_source.u8[0], header.event_source.u8[1], header.hops);
-        return;
-      }
-
-      /* Update header in the packet buffer */
-      memcpy(packetbuf_dataptr(), &header, sizeof(header));
-      /* Send unicast message to parent */
-      unicast_send(&conn->uc, parent_node);
-
-      break;
-    }
-  }
-}
-
-/*---------------------------------------------------------------------------*/
-/*                               Command Handling */
-/*---------------------------------------------------------------------------*/
-/**
- * @brief Header structure for command packets.
- */
-struct command_msg_t {
-  linkaddr_t event_source;
-  uint16_t event_seqn;
-  /* ... */
-} __attribute__((packed));

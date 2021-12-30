@@ -4,11 +4,16 @@
 #include "connection/connection.h"
 
 /**
- * @brief Initialize beacon connection.
+ * @brief Initialize beacon operation(s).
  *
  * @param best_conn Best connection pointer.
  */
 void beacon_init(const struct connection_t *best_conn);
+
+/**
+ * @brief Terminate beacon operation(s).
+ */
+void beacon_terminate(void);
 
 /**
  * @brief Broadcast receive callback.

@@ -50,13 +50,22 @@ static const struct unicast_callbacks uc_cb = {.recv = uc_recv_cb,
                                                .sent = NULL};
 
 /* --- --- */
-void connection_init(uint16_t channel) {
-  /* Open the underlying rime primitive */
+void connection_open(uint16_t channel) {
+  /* Open the underlying rime primitives */
   broadcast_open(&bc_conn, channel, &bc_cb);
   unicast_open(&uc_conn, channel + 1, &uc_cb);
 
   /* Initialize beacon */
   beacon_init(best_conn);
+}
+
+void connection_close(void) {
+  /* Close the underlying rime primitives */
+  broadcast_close(&bc_conn);
+  unicast_close(&uc_conn);
+
+  /* Terminate beacon */
+  beacon_terminate();
 }
 
 bool connection_is_connected() {
@@ -77,7 +86,7 @@ int connection_broadcast_send(enum broadcast_msg_type_t type) {
   /* Send */
   const int ret = broadcast_send(&bc_conn);
   if (!ret)
-    LOG_DEBUG("Error sending broadcast message");
+    LOG_ERROR("Error sending broadcast message");
   else
     LOG_DEBUG("Broadcast message sent successfully");
   return ret;
@@ -120,6 +129,29 @@ static void bc_recv_cb(struct broadcast_conn *bc_conn,
       break;
     }
   }
+}
+
+int connection_unicast_send(enum unicast_msg_type_t type,
+                            const linkaddr_t *receiver) {
+  /* Prepare unicast header */
+  const struct unicast_hdr_t uc_header = {.type = type};
+
+  if (!connection_is_connected()) return -1; /* Disconnected */
+  if (!packetbuf_hdralloc(sizeof(uc_header)))
+    return -2; /* Insufficient space */
+
+  /* Copy header */
+  memcpy(packetbuf_hdrptr(), &uc_header, sizeof(uc_header));
+
+  /* Send */
+  const int ret = unicast_send(&uc_conn, receiver);
+  if (!ret)
+    LOG_ERROR("Error sending unicast message to %02x:%02x", receiver->u8[0],
+              receiver->u8[1]);
+  else
+    LOG_DEBUG("Unicast message to %02x:%02x sent successfully", receiver->u8[0],
+              receiver->u8[1]);
+  return ret;
 }
 
 static void uc_recv_cb(struct unicast_conn *uc_conn, const linkaddr_t *sender) {

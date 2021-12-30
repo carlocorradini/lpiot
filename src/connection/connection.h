@@ -78,11 +78,16 @@ struct unicast_hdr_t {
 
 /* --- --- */
 /**
- * @brief Initialize node connection(s).
+ * @brief Open connection(s).
  *
  * @param channel Channel(s) on which the connection will operate.
  */
-void connection_init(uint16_t channel);
+void connection_open(uint16_t channel);
+
+/**
+ * @brief Close connection(s).
+ */
+void connection_close(void);
 
 /**
  * @brief Check if there is a valid connection.

@@ -1,6 +1,7 @@
 #include "controller.h"
 
 #include "config/config.h"
+#include "etc/etc.h"
 #include "logger/logger.h"
 
 /**
@@ -78,20 +79,13 @@ static void actuation_logic(void);
 static void actuation_commands(void);
 
 /**
- * @brief Connection.
- */
-static struct etc_conn_t *etc_conn = NULL;
-
-/**
  * @brief Callbacks.
  */
 static const struct etc_callbacks_t cb = {
     .receive_cb = receive_cb, .event_cb = event_cb, .command_cb = NULL};
 
-void controller_init(struct etc_conn_t *conn) {
-  etc_conn = conn;
-
-  /* Sensor structure */
+void controller_init(void) {
+  /* Sensor readings structure */
   size_t i;
   for (i = 0; i < NUM_SENSORS; ++i) {
     linkaddr_copy(&sensor_readings[i].addr, &SENSORS[i]);
@@ -100,8 +94,8 @@ void controller_init(struct etc_conn_t *conn) {
   }
   num_sensor_readings = 0;
 
-  /* Open connection */
-  etc_open(conn, ETC_FIRST_CHANNEL, &cb, SENSORS, NUM_SENSORS);
+  /* Open ETC connection */
+  etc_open(ETC_FIRST_CHANNEL, &cb);
 }
 
 static void receive_cb(const linkaddr_t *event_source, uint16_t event_seqn,
@@ -119,10 +113,10 @@ static void receive_cb(const linkaddr_t *event_source, uint16_t event_seqn,
    * concurrent event. To match logs, the controller should
    * always use the same event_source and event_seqn for collection
    * and actuation */
-  LOG_INFO("COLLECT [%02x:%02x, %u] %02x:%02x (%lu, %lu)",
-           etc_conn->event_source.u8[0], etc_conn->event_source.u8[1],
-           etc_conn->event_seqn, source->u8[0], source->u8[1], value,
-           threshold);
+  const struct etc_event_t *event = etc_get_current_event();
+  LOG_INFO("COLLECT [%02x:%02x, %u] %02x:%02x (%lu, %lu)", event->source.u8[0],
+           event->source.u8[1], event->seqn, source->u8[0], source->u8[1],
+           value, threshold);
 
   /* If all data was collected, call actuation logic */
 }
@@ -132,8 +126,9 @@ static void event_cb(const linkaddr_t *event_source, uint16_t event_seqn) {
    * otherwise, update the current event being handled */
 
   /* Logging */
-  LOG_INFO("EVENT [%02x:%02x, %u]", etc_conn->event_source.u8[0],
-           etc_conn->event_source.u8[1], etc_conn->event_seqn);
+  const struct etc_event_t *event = etc_get_current_event();
+  LOG_INFO("EVENT [%02x:%02x, %u]", event->source.u8[0], event->source.u8[1],
+           event->seqn);
 
   /* Wait for sensor readings */
 }
@@ -232,13 +227,13 @@ static void actuation_commands(void) {
   int i;
   for (i = 0; i < NUM_SENSORS; i++) {
     if (sensor_readings[i].command != COMMAND_TYPE_NONE) {
-      etc_command(etc_conn, &sensor_readings[i].addr,
-                  sensor_readings[i].command, sensor_readings[i].threshold);
+      etc_command(&sensor_readings[i].addr, sensor_readings[i].command,
+                  sensor_readings[i].threshold);
 
       /* Logging (based on the current event, expressed by source seqn) */
-      LOG_INFO("COMMAND [%02x:%02x, %u] %02x:%02x",
-               etc_conn->event_source.u8[0], etc_conn->event_source.u8[1],
-               etc_conn->event_seqn, sensor_readings[i].addr.u8[0],
+      const struct etc_event_t *event = etc_get_current_event();
+      LOG_INFO("COMMAND [%02x:%02x, %u] %02x:%02x", event->source.u8[0],
+               event->source.u8[1], event->seqn, sensor_readings[i].addr.u8[0],
                sensor_readings[i].addr.u8[1]);
     }
   }
