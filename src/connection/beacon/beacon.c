@@ -77,6 +77,12 @@ static void shift_right_connections(size_t from);
  */
 static void shift_left_connections(size_t from);
 
+/**
+ * @brief Print connection(s) array.
+ */
+static void print_connections(void);
+
+/* --- --- */
 void beacon_init(const struct connection_t *best_connection) {
   /* Best connection is always first in connections */
   best_connection = &connections[0];
@@ -171,6 +177,13 @@ void beacon_recv_cb(const struct broadcast_hdr_t *header,
   connections[connection_index].hopn = beacon_msg.hopn + 1;
   connections[connection_index].rssi = rssi;
 
+#ifdef DEBUG
+  logger_set_newline(false);
+  LOG_DEBUG("Connections: ");
+  print_connections();
+  logger_set_newline(true);
+#endif
+
   if (connection_index == 0) {
     /* New best (connection) parent */
     LOG_INFO("New parent %02x:%02x: { hopn: %u, rssi: %d }",
@@ -181,9 +194,10 @@ void beacon_recv_cb(const struct broadcast_hdr_t *header,
                NULL);
   } else
     LOG_DEBUG("Backup parent %02x:%02x at %d: { hopn: %u, rssi: %d }",
-              connections[0].parent_node.u8[0],
-              connections[0].parent_node.u8[1], connection_index,
-              connections[0].hopn, connections[0].rssi);
+              connections[connection_index].parent_node.u8[0],
+              connections[connection_index].parent_node.u8[1], connection_index,
+              connections[connection_index].hopn,
+              connections[connection_index].rssi);
 }
 
 static void beacon_timer_cb(void *ignored) {
@@ -241,4 +255,18 @@ static void shift_left_connections(size_t from) {
   }
 
   reset_connections_idx(CONNECTION_BEACON_MAX_CONNECTIONS - 1);
+}
+
+static void print_connections(void) {
+  size_t i;
+  const struct connection_t *conn;
+
+  printf("[ ");
+  for (i = 0; i < CONNECTION_BEACON_MAX_CONNECTIONS; ++i) {
+    conn = &connections[i];
+    printf("%u{ parent_node: %02x:%02x, seqn: %u, hopn: %u, rssi: %d } ", i,
+           conn->parent_node.u8[0], conn->parent_node.u8[1], conn->seqn,
+           conn->hopn, conn->rssi);
+  }
+  printf("]\n");
 }

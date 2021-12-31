@@ -11,6 +11,11 @@
 static enum log_level_t log_level = LOGGER_LEVEL;
 
 /**
+ * @brief Print newline character '\n' after a log message.
+ */
+static bool newline = true;
+
+/**
  * @brief String representation of log levels.
  */
 static const char const* log_level_strings[] = {"TRACE", "DEBUG", "INFO",
@@ -26,7 +31,7 @@ void logger_log(enum log_level_t level, const char* file, int line,
   printf("%-5s %s %s:%d: ", log_level_strings[level], node_get_role_name(),
          file, line);
   vprintf(fmt, arg);
-  printf("\n");
+  if (newline) printf("\n");
   va_end(arg);
 }
 
@@ -35,3 +40,5 @@ void logger_set_level(enum log_level_t level) { log_level = level; }
 enum log_level_t logger_get_level(void) { return log_level; }
 
 bool logger_is_enabled(enum log_level_t level) { return log_level <= level; }
+
+void logger_set_newline(bool enable) { newline = enable; }

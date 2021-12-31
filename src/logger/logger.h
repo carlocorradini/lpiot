@@ -106,4 +106,12 @@ enum log_level_t logger_get_level(void);
  */
 bool logger_is_enabled(enum log_level_t level);
 
+/**
+ * @brief Enable or disable newline character '\n'.
+ * The '\n' character is printed after the log message.
+ *
+ * @param enable True enable, false disable '\n'.
+ */
+void logger_set_newline(bool enable);
+
 #endif
