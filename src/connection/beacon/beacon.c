@@ -121,7 +121,7 @@ void beacon_recv_cb(const struct broadcast_hdr_t *header,
   size_t connection_index = 0;
 
   /* Check received beacon message validity */
-  if (packetbuf_datalen() != sizeof(struct beacon_msg_t)) {
+  if (packetbuf_datalen() != sizeof(beacon_msg)) {
     LOG_ERROR("Received beacon message wrong size: %u byte",
               packetbuf_datalen());
     return;
@@ -132,6 +132,7 @@ void beacon_recv_cb(const struct broadcast_hdr_t *header,
 
   /* Read RSSI of last reception */
   rssi = packetbuf_attr(PACKETBUF_ATTR_RSSI);
+
   LOG_INFO(
       "Received beacon message from %02x:%02x with rssi %d: "
       "{ seqn: %u, hopn: %u}",

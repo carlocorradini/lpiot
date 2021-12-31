@@ -4,6 +4,7 @@
 #include <net/linkaddr.h>
 #include <sys/ctimer.h>
 
+#include "connection/connection.h"
 #include "node/node.h"
 
 /**
@@ -84,6 +85,24 @@ void etc_close(void);
  * @return Evenet data.
  */
 const struct etc_event_t *etc_get_current_event(void);
+
+/**
+ * @brief Broadcast event receive callback.
+ *
+ * @param header Broadcast header.
+ * @param sender Address of the sender node.
+ */
+void etc_event_cb(const struct broadcast_hdr_t *header,
+                  const linkaddr_t *sender);
+
+/**
+ * @brief Unicast collect receive callback.
+ *
+ * @param header Unicast header.
+ * @param sender Address of the sender node.
+ */
+void etc_collect_cb(const struct unicast_hdr_t *header,
+                    const linkaddr_t *sender);
 
 /**
  * @brief Start event dissemination.

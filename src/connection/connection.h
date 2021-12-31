@@ -63,8 +63,12 @@ struct broadcast_hdr_t {
 /**
  * @brief Unicast message types.
  */
-/*FIXME*/
-enum unicast_msg_type_t { FIXME };
+enum unicast_msg_type_t {
+  /**
+   * @brief Collect message.
+   */
+  UNICAST_MSG_TYPE_COLLECT
+};
 
 /**
  * @brief Unicast header.
@@ -101,11 +105,24 @@ bool connection_is_connected();
  * @brief Send a broadcast message.
  *
  * @param type Message type.
- * @return 1 if the message could be sent.
+ * @return 1 if the message has been sent.
  * 0 if the message could not be sent due to a generic error.
  * -1 if disconnected.
  * -2 if unable to allocate sufficient header space.
  */
 int connection_broadcast_send(enum broadcast_msg_type_t type);
+
+/**
+ * @brief Send a unicast message to receiver.
+ *
+ * @param type Message type.
+ * @param receiver
+ * @return 1 if the message has been sent.
+ * 0 if the message could not be sent due to a generic error.
+ * -1 if disconnected.
+ * -2 if unable to allocate sufficient header space.
+ */
+int connection_unicast_send(enum unicast_msg_type_t type,
+                            const linkaddr_t *receiver);
 
 #endif

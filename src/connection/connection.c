@@ -4,6 +4,7 @@
 #include <net/rime/unicast.h>
 
 #include "beacon/beacon.h"
+#include "etc/etc.h"
 #include "logger/logger.h"
 
 const struct connection_t *const best_conn;
@@ -86,9 +87,9 @@ int connection_broadcast_send(enum broadcast_msg_type_t type) {
   /* Send */
   const int ret = broadcast_send(&bc_conn);
   if (!ret)
-    LOG_ERROR("Error sending broadcast message");
+    LOG_ERROR("Error sending broadcast message of type %d", type);
   else
-    LOG_DEBUG("Broadcast message sent successfully");
+    LOG_DEBUG("Broadcast message of type %d sent successfully", type);
   return ret;
 }
 
@@ -98,7 +99,8 @@ static void bc_recv_cb(struct broadcast_conn *bc_conn,
 
   /* Check received broadcast message validity */
   if (packetbuf_datalen() < sizeof(bc_header)) {
-    LOG_ERROR("Broadcast message wrong size: %u byte", packetbuf_datalen());
+    LOG_ERROR("Broadcast message from %02x:%02x wrong size: %u byte",
+              sender->u8[0], sender->u8[1], packetbuf_datalen());
     return;
   }
 
@@ -120,12 +122,13 @@ static void bc_recv_cb(struct broadcast_conn *bc_conn,
     }
     case BROADCAST_MSG_TYPE_EVENT: {
       LOG_DEBUG("Received broadcast message of type EVENT");
-      /* TODO */
+      etc_event_cb(&bc_header, sender);
       break;
     }
     default: {
-      LOG_WARN("Received broadcast message of unknown type: %d",
-               bc_header.type);
+      LOG_WARN(
+          "Received broadcast message from %02x:%02x with unknown type: %d",
+          sender->u8[0], sender->u8[1], bc_header.type);
       break;
     }
   }
@@ -159,7 +162,8 @@ static void uc_recv_cb(struct unicast_conn *uc_conn, const linkaddr_t *sender) {
 
   /* Check received unicast message validity */
   if (packetbuf_datalen() < sizeof(uc_header)) {
-    LOG_ERROR("Unicast message wrong size: %u byte", packetbuf_datalen());
+    LOG_ERROR("Unicast message from %02x:%02x wrong size: %u byte",
+              sender->u8[0], sender->u8[1], packetbuf_datalen());
     return;
   }
 
@@ -174,8 +178,13 @@ static void uc_recv_cb(struct unicast_conn *uc_conn, const linkaddr_t *sender) {
 
   /* Forward to correct callback */
   switch (uc_header.type) {
+    case UNICAST_MSG_TYPE_COLLECT: {
+      LOG_DEBUG("Received unicast message of type COLLECT");
+      break;
+    }
     default: {
-      LOG_WARN("Received unicast message of unknown type: %d", uc_header.type);
+      LOG_WARN("Received unicast message from  %02x:%02x with unknown type: %d",
+               sender->u8[0], sender->u8[1], uc_header.type);
       break;
     }
   }
