@@ -80,13 +80,58 @@ struct unicast_hdr_t {
   enum unicast_msg_type_t type;
 } __attribute__((packed));
 
+/* --- CALLBACKS --- */
+/**
+ * @brief Connection callbacks.
+ */
+struct connection_callbacks_t {
+  /**
+   * @brief Broadcast callbacks.
+   */
+  struct bc_t {
+    /**
+     * @brief Broadcast receive callbacks.
+     */
+    struct bc_recv_t {
+      /**
+       * @brief Beacon message callback.
+       */
+      void (*beacon)(const struct broadcast_hdr_t *header,
+                     const linkaddr_t *sender);
+      /**
+       * @brief Event message callback.
+       */
+      void (*event)(const struct broadcast_hdr_t *header,
+                    const linkaddr_t *sender);
+    } recv;
+  } bc;
+
+  /**
+   * @brief Unicast callbacks.
+   */
+  struct uc_t {
+    /**
+     * @brief Unicast receive callbacks.
+     */
+    struct uc_recv_t {
+      /**
+       * @brief Collect message callback.
+       */
+      void (*collect)(const struct unicast_hdr_t *header,
+                      const linkaddr_t *sender);
+    } recv;
+  } uc;
+};
+
 /* --- --- */
 /**
  * @brief Open connection(s).
  *
  * @param channel Channel(s) on which the connection will operate.
+ * @param callbacks Connection callbacks pointer.
  */
-void connection_open(uint16_t channel);
+void connection_open(uint16_t channel,
+                     const struct connection_callbacks_t *callbacks);
 
 /**
  * @brief Close connection(s).

@@ -4,10 +4,14 @@
 #include <net/rime/unicast.h>
 
 #include "beacon/beacon.h"
-#include "etc/etc.h"
 #include "logger/logger.h"
 
 const struct connection_t *const best_conn;
+
+/**
+ * @brief Connection callbacks pointer.
+ */
+static const struct connection_callbacks_t *cb;
 
 /* --- BROADCAST --- */
 /**
@@ -51,7 +55,10 @@ static const struct unicast_callbacks uc_cb = {.recv = uc_recv_cb,
                                                .sent = NULL};
 
 /* --- --- */
-void connection_open(uint16_t channel) {
+void connection_open(uint16_t channel,
+                     const struct connection_callbacks_t *callbacks) {
+  cb = callbacks;
+
   /* Open the underlying rime primitives */
   broadcast_open(&bc_conn, channel, &bc_cb);
   unicast_open(&uc_conn, channel + 1, &uc_cb);
@@ -73,6 +80,7 @@ bool connection_is_connected() {
   return !linkaddr_cmp(&best_conn->parent_node, &linkaddr_null);
 }
 
+/* --- BROADCAST --- */
 int connection_broadcast_send(enum broadcast_msg_type_t type) {
   /* Prepare broadcast header */
   const struct broadcast_hdr_t bc_header = {.type = type};
@@ -116,13 +124,16 @@ static void bc_recv_cb(struct broadcast_conn *bc_conn,
   /* Forward to correct callback */
   switch (bc_header.type) {
     case BROADCAST_MSG_TYPE_BEACON: {
-      LOG_DEBUG("Received broadcast message of type BEACON");
+      LOG_DEBUG("Received broadcast message from %02x:%02x of type BEACON",
+                sender->u8[0], sender->u8[1]);
       beacon_recv_cb(&bc_header, sender);
+      if (cb->bc.recv.beacon != NULL) cb->bc.recv.beacon(&bc_header, sender);
       break;
     }
     case BROADCAST_MSG_TYPE_EVENT: {
-      LOG_DEBUG("Received broadcast message of type EVENT");
-      etc_event_cb(&bc_header, sender);
+      LOG_DEBUG("Received broadcast message from %02x:%02x of type EVENT",
+                sender->u8[0], sender->u8[1]);
+      if (cb->bc.recv.event != NULL) cb->bc.recv.event(&bc_header, sender);
       break;
     }
     default: {
@@ -134,6 +145,7 @@ static void bc_recv_cb(struct broadcast_conn *bc_conn,
   }
 }
 
+/* --- UNICAST --- */
 int connection_unicast_send(enum unicast_msg_type_t type,
                             const linkaddr_t *receiver) {
   /* Prepare unicast header */
@@ -179,11 +191,13 @@ static void uc_recv_cb(struct unicast_conn *uc_conn, const linkaddr_t *sender) {
   /* Forward to correct callback */
   switch (uc_header.type) {
     case UNICAST_MSG_TYPE_COLLECT: {
-      LOG_DEBUG("Received unicast message of type COLLECT");
+      LOG_DEBUG("Received unicast message from %02x:%02x of type COLLECT",
+                sender->u8[0], sender->u8[1]);
+      if (cb->uc.recv.collect != NULL) cb->uc.recv.collect(&uc_header, sender);
       break;
     }
     default: {
-      LOG_WARN("Received unicast message from  %02x:%02x with unknown type: %d",
+      LOG_WARN("Received unicast message from %02x:%02x with unknown type: %d",
                sender->u8[0], sender->u8[1], uc_header.type);
       break;
     }

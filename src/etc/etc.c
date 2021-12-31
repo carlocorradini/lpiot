@@ -77,19 +77,22 @@ struct command_msg_t {
   uint16_t event_seqn;
 } __attribute__((packed));
 
+/* --- EVENT MESSAGE--- */
+/**
+ * @brief Broadcast event message receive callback.
+ *
+ * @param header Broadcast header.
+ * @param sender Address of the sender node.
+ */
+static void event_msg_cb(const struct broadcast_hdr_t *header,
+                         const linkaddr_t *sender);
+
 /**
  * @brief Event timer callback.
  *
  * @param ignored
  */
 static void event_timer_cb(void *ignored);
-
-/**
- * @brief Collect timer callback.
- *
- * @param ignored
- */
-static void collect_timer_cb(void *ignored);
 
 /**
  * @brief Send event message.
@@ -99,6 +102,23 @@ static void collect_timer_cb(void *ignored);
  */
 /*TODO RETURN*/
 static int send_event_message(const struct event_msg_t *event_msg);
+
+/* --- COLLECT MESSAGE --- */
+/**
+ * @brief Unicast collect message receive callback.
+ *
+ * @param header Unicast header.
+ * @param sender Address of the sender node.
+ */
+static void collect_msg_cb(const struct unicast_hdr_t *header,
+                           const linkaddr_t *sender);
+
+/**
+ * @brief Collect timer callback.
+ *
+ * @param ignored
+ */
+static void collect_timer_cb(void *ignored);
 
 /**
  * @brief Send collect message to receiver node.
@@ -111,13 +131,24 @@ static int send_event_message(const struct event_msg_t *event_msg);
 static int send_collect_message(const struct collect_msg_t *collect_msg,
                                 const linkaddr_t *receiver);
 
+/* --- CONNECTION --- */
+/**
+ * @brief Connection callbacks.
+ */
+static struct connection_callbacks_t conn_cb = {
+    .bc = {.recv = {.event = event_msg_cb, .beacon = NULL}},
+    .uc = {.recv = {.collect = collect_msg_cb}}};
+
+/* --- --- */
 void etc_open(uint16_t channel, const struct etc_callbacks_t *callbacks) {
   cb = callbacks;
+
+  /* Initialize event */
   event.seqn = 0;
   linkaddr_copy(&event.source, &linkaddr_null);
 
   /* Open connection */
-  connection_open(channel);
+  connection_open(channel, &conn_cb);
 }
 
 void etc_close(void) {
@@ -158,7 +189,8 @@ int etc_command(const linkaddr_t *receiver, enum command_type_t command,
   /* Prepare and send command */
 }
 
-void etc_event_cb(const struct broadcast_hdr_t *header,
+/* --- EVENT MESSAGE --- */
+void event_msg_cb(const struct broadcast_hdr_t *header,
                   const linkaddr_t *sender) {
   struct event_msg_t event_msg;
 
@@ -175,11 +207,6 @@ void etc_event_cb(const struct broadcast_hdr_t *header,
 
   /* Copy event message */
   packetbuf_copyto(&event_msg);
-
-  /* Ignore event if made by me */
-  if (event_msg.event_seqn == event.seqn &&
-      linkaddr_cmp(&event_msg.event_source, &event.source))
-    return;
 
   LOG_INFO(
       "Received event message from %02x:%02x: "
@@ -198,17 +225,21 @@ void etc_event_cb(const struct broadcast_hdr_t *header,
   /* Schedule event message propagation */
   ctimer_set(&event_timer, ETC_EVENT_FORWARD_DELAY, event_timer_cb, NULL);
 
-  /* Schedule collect only if sensor/actuator */
+  /* Schedule collect message only if sensor/actuator */
   if (node_get_role() == NODE_ROLE_SENSOR_ACTUATOR) {
     /* Schedule collect message dispatch */
     ctimer_set(&collect_timer, ETC_COLLECT_START_DELAY, collect_timer_cb, NULL);
   }
 }
 
-void etc_collect_cb(const struct unicast_hdr_t *header,
-                    const linkaddr_t *sender) {
-  /*TODO*/
-  LOG_FATAL("HEYYYYYYYYYYYY BOYYYYYYYYYY");
+static void event_timer_cb(void *ignored) {
+  /* Prepare event message */
+  struct event_msg_t event_msg;
+  event_msg.event_seqn = event.seqn;
+  linkaddr_copy(&event_msg.event_source, &event.source);
+
+  /* Send event message */
+  send_event_message(&event_msg);
 }
 
 static int send_event_message(const struct event_msg_t *event_msg) {
@@ -226,6 +257,23 @@ static int send_event_message(const struct event_msg_t *event_msg) {
              event_msg->event_source.u8[1]);
 
   return ret;
+}
+
+/* --- COLLECT MESSAGE--- */
+void collect_msg_cb(const struct unicast_hdr_t *header,
+                    const linkaddr_t *sender) {
+  /*TODO*/
+  LOG_FATAL("HEYYYYYYYYYYYY BOYYYYYYYYYY");
+}
+
+static void collect_timer_cb(void *ignored) {
+  /* Prepare collect message */
+  struct collect_msg_t collect_msg;
+  collect_msg.event_seqn = event.seqn;
+  linkaddr_copy(&collect_msg.event_source, &event.source);
+
+  /* Send collect message */
+  send_collect_message(&collect_msg, &best_conn->parent_node);
 }
 
 static int send_collect_message(const struct collect_msg_t *collect_msg,
@@ -247,22 +295,4 @@ static int send_collect_message(const struct collect_msg_t *collect_msg,
   return ret;
 }
 
-static void event_timer_cb(void *ignored) {
-  /* Prepare event message */
-  struct event_msg_t event_msg;
-  event_msg.event_seqn = event.seqn;
-  linkaddr_copy(&event_msg.event_source, &event.source);
-
-  /* Send event message */
-  send_event_message(&event_msg);
-}
-
-static void collect_timer_cb(void *ignored) {
-  /* Prepare collect message */
-  struct collect_msg_t collect_msg;
-  collect_msg.event_seqn = event.seqn;
-  linkaddr_copy(&collect_msg.event_source, &event.source);
-
-  /* Send collect message */
-  send_collect_message(&collect_msg, &best_conn->parent_node);
-}
+/* --- COMMAND MESSAGE --- */
