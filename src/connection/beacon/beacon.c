@@ -77,10 +77,12 @@ static void shift_right_connections(size_t from);
  */
 static void shift_left_connections(size_t from);
 
+#ifdef DEBUG
 /**
  * @brief Print connection(s) array.
  */
 static void print_connections(void);
+#endif
 
 /* --- --- */
 void beacon_init(const struct connection_t *best_connection) {
@@ -257,6 +259,7 @@ static void shift_left_connections(size_t from) {
   reset_connections_idx(CONNECTION_BEACON_MAX_CONNECTIONS - 1);
 }
 
+#ifdef DEBUG
 static void print_connections(void) {
   size_t i;
   const struct connection_t *conn;
@@ -270,3 +273,4 @@ static void print_connections(void) {
   }
   printf("]\n");
 }
+#endif
