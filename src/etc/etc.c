@@ -168,7 +168,7 @@ int etc_trigger(uint32_t value, uint32_t threshold) {
   /* TODO return no value! */
   if (!ctimer_expired(&suppression_timer_new)) return;
 
-  /* Current event is me */
+  /* Update event */
   event.seqn += 1;
   linkaddr_copy(&event.source, &linkaddr_node_addr);
 
@@ -179,6 +179,13 @@ int etc_trigger(uint32_t value, uint32_t threshold) {
 
   /* Start to suppress new trigger(s) */
   ctimer_set(&suppression_timer_new, SUPPRESSION_TIMEOUT_NEW, NULL, NULL);
+
+  /* Start to suppress new event message(s) */
+  ctimer_set(&suppression_timer_propagation, SUPPRESSION_TIMEOUT_PROP, NULL,
+             NULL);
+
+  /* Schedule collect message dispatch */
+  ctimer_set(&collect_timer, ETC_COLLECT_START_DELAY, collect_timer_cb, NULL);
 
   /* Send event message in broadcast */
   return send_event_message(&event_msg);
@@ -214,7 +221,7 @@ void event_msg_cb(const struct broadcast_hdr_t *header,
       sender->u8[0], sender->u8[1], event_msg.event_seqn,
       event_msg.event_source.u8[0], event_msg.event_source.u8[1]);
 
-  /* Update current event */
+  /* Update event */
   event.seqn = event_msg.event_seqn;
   linkaddr_copy(&event.source, &event_msg.event_source);
 
