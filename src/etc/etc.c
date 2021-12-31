@@ -270,7 +270,8 @@ static int send_event_message(const struct event_msg_t *event_msg) {
 void collect_msg_cb(const struct unicast_hdr_t *header,
                     const linkaddr_t *sender) {
   /*TODO*/
-  LOG_FATAL("HEYYYYYYYYYYYY BOYYYYYYYYYY");
+  LOG_FATAL("HEYYYYYYYYYYYY BOYYYYYYYYYY from %02x:%02x", sender->u8[0],
+            sender->u8[1]);
 }
 
 static void collect_timer_cb(void *ignored) {
