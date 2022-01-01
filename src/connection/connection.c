@@ -191,7 +191,7 @@ static void bc_recv_cb(struct broadcast_conn *bc_conn,
   }
 }
 
-static void uc_sent_cb(struct unicast_conn *uc_conn, int status, int num_tx) {
+static void bc_sent_cb(struct broadcast_conn *bc_conn, int status, int num_tx) {
   /* Check status */
   if (status != MAC_TX_OK) {
     /* Something bad happended */
