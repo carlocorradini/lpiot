@@ -34,6 +34,18 @@ $ make CHECKS=true
 $ { make CHECKS=true 1>&2; } 2>&1 | sed '/contiki/d'
 ```
 
+## Recipes
+
+> Default recipe is *building/compiling*
+
+### cleanall
+
+> Remove generated files, directories and logs
+
+```
+$ make cleanall
+```
+
 ## License
 
 This project is licensed under the MIT License - see [LICENSE](LICENSE) file for details
