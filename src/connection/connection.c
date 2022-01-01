@@ -36,10 +36,19 @@ static void bc_recv_cb(struct broadcast_conn *bc_conn,
                        const linkaddr_t *sender);
 
 /**
+ * @brief Broadcast sent callback.
+ *
+ * @param bc_conn Broadcast connection.
+ * @param status Status code.
+ * @param num_tx Total number of transmission(s).
+ */
+static void bc_sent_cb(struct broadcast_conn *bc_conn, int status, int num_tx);
+
+/**
  * @brief Broadcast callback structure.
  */
 static const struct broadcast_callbacks bc_cb = {.recv = bc_recv_cb,
-                                                 .sent = NULL};
+                                                 .sent = bc_sent_cb};
 
 /* --- UNICAST --- */
 /**
@@ -111,7 +120,7 @@ const struct connection_t *connection_get_conn(void) {
 
 /* --- BROADCAST --- */
 static bool bc_send(void) {
-  const bool ret = broadcast_send(&uc_conn);
+  const bool ret = broadcast_send(&bc_conn);
 
   if (!ret)
     LOG_ERROR("Error sending broadcast message");
@@ -180,6 +189,19 @@ static void bc_recv_cb(struct broadcast_conn *bc_conn,
       break;
     }
   }
+}
+
+static void uc_sent_cb(struct unicast_conn *uc_conn, int status, int num_tx) {
+  /* Check status */
+  if (status != MAC_TX_OK) {
+    /* Something bad happended */
+    LOG_ERROR("Error sending broadcast message in tx %d due to %d", num_tx,
+              status);
+    return;
+  }
+
+  /* Message sent successfully */
+  LOG_DEBUG("Sent broadcast message");
 }
 
 /* --- UNICAST --- */
@@ -297,6 +319,6 @@ static void uc_sent_cb(struct unicast_conn *uc_conn, int status, int num_tx) {
   }
 
   /* Message sent successfully */
-  LOG_INFO("Unicast message to %02x:%02x sent successfully", receiver->u8[0],
-           receiver->u8[1]);
+  LOG_DEBUG("Sent unicast message to %02x:%02x", receiver->u8[0],
+            receiver->u8[1]);
 }

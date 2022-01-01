@@ -4,6 +4,36 @@
 #include "net/packetbuf.h"
 
 /**
+ * @brief Event message.
+ */
+struct event_msg_t {
+  /* Address of the sensor that generated the event. */
+  linkaddr_t source;
+  /* Event sequence number. */
+  uint16_t seqn;
+} __attribute__((packed));
+
+/**
+ * @brief Header structure for data packets.
+ */
+struct collect_msg_t {
+  /* Address of the sensor that generated the event. */
+  linkaddr_t event_source;
+  /* Event sequence number. */
+  uint16_t event_seqn;
+} __attribute__((packed));
+
+/**
+ * @brief Header structure for command packets.
+ */
+struct command_msg_t {
+  /* Address of the sensor that generated the event. */
+  linkaddr_t event_source;
+  /* Event sequence number. */
+  uint16_t event_seqn;
+} __attribute__((packed));
+
+/**
  * @brief ETC callback(s) to interact with the node.
  */
 static const struct etc_callbacks_t *cb;
@@ -33,41 +63,9 @@ static struct ctimer event_timer;
  */
 static struct ctimer collect_timer;
 
-/**
- * @brief  Event message.
- */
-struct event_msg_t {
-  /* Address of the sensor that generated the event. */
-  linkaddr_t source;
-  /* Event sequence number. */
-  uint16_t seqn;
-} __attribute__((packed));
-
-/* FIXME Mumble on header */
-/**
- * @brief Header structure for data packets.
- */
-struct collect_msg_t {
-  /* Address of the sensor that generated the event. */
-  linkaddr_t event_source;
-  /* Event sequence number. */
-  uint16_t event_seqn;
-} __attribute__((packed));
-
-/* FIXME Mumble on header */
-/**
- * @brief Header structure for command packets.
- */
-struct command_msg_t {
-  /* Address of the sensor that generated the event. */
-  linkaddr_t event_source;
-  /* Event sequence number. */
-  uint16_t event_seqn;
-} __attribute__((packed));
-
 /* --- EVENT MESSAGE--- */
 /**
- * @brief Broadcast event message receive callback.
+ * @brief Event message receive callback.
  *
  * @param header Broadcast header.
  * @param sender Address of the sender node.
@@ -93,7 +91,7 @@ static bool send_event_message(const struct event_msg_t *event_msg);
 
 /* --- COLLECT MESSAGE --- */
 /**
- * @brief Unicast collect message receive callback.
+ * @brief Collect message receive callback.
  *
  * @param header Unicast header.
  * @param sender Address of the sender node.
@@ -110,12 +108,13 @@ static void collect_timer_cb(void *ignored);
 
 /**
  * @brief Send collect message to receiver node.
+ * The final recipient of the collect must be the Controller node.
  *
  * @param collect_msg Collect message to send.
  * @param receiver Receiver node address.
- * @return
+ * @return true Collect message sent.
+ * @return false Collect message not sent due to an error.
  */
-/* TODO RETURN*/
 static bool send_collect_message(const struct collect_msg_t *collect_msg,
                                  const linkaddr_t *receiver);
 
@@ -151,13 +150,14 @@ void etc_close(void) {
 
 const struct etc_event_t *etc_get_current_event(void) { return &event; }
 
-int etc_trigger(uint32_t value, uint32_t threshold) {
+bool etc_trigger(uint32_t value, uint32_t threshold) {
   /* Ignore if suppression is active */
-  /* TODO return no value! */
-  if (!ctimer_expired(&suppression_timer_new)) return;
+  if (!ctimer_expired(&suppression_timer_new) ||
+      !ctimer_expired(&suppression_timer_propagation))
+    return false;
 
   /* Update event */
-  event.seqn += 1;
+  event.seqn += (event.seqn == 0 ? 0 : 1);
   linkaddr_copy(&event.source, &linkaddr_node_addr);
 
   /* Prepare event message */
@@ -175,7 +175,7 @@ int etc_trigger(uint32_t value, uint32_t threshold) {
   /* Schedule collect message dispatch */
   ctimer_set(&collect_timer, ETC_COLLECT_START_DELAY, collect_timer_cb, NULL);
 
-  /* Send event message in broadcast */
+  /* Send event message */
   return send_event_message(&event_msg);
 }
 
@@ -193,6 +193,7 @@ void event_msg_cb(const struct broadcast_hdr_t *header,
   if (!ctimer_expired(&suppression_timer_new) ||
       !ctimer_expired(&suppression_timer_propagation))
     return;
+
   /* Check received event message validity */
   if (packetbuf_datalen() != sizeof(event_msg)) {
     LOG_ERROR("Received event message wrong size: %u byte",
@@ -202,6 +203,14 @@ void event_msg_cb(const struct broadcast_hdr_t *header,
 
   /* Copy event message */
   packetbuf_copyto(&event_msg);
+
+  /* Ignore if event is old */
+  if (event_msg.seqn < event.seqn) return;
+  /* Ignore if event is current */
+  /* TODO Non so se sia corretto per eventuali retransmit */
+  if (event_msg.seqn == event.seqn &&
+      linkaddr_cmp(&event_msg.source, &event.source))
+    return;
 
   LOG_INFO(
       "Received event message from %02x:%02x: "
@@ -254,8 +263,8 @@ static bool send_event_message(const struct event_msg_t *event_msg) {
 }
 
 /* --- COLLECT MESSAGE--- */
-void collect_msg_cb(const struct unicast_hdr_t *header,
-                    const linkaddr_t *sender) {
+static void collect_msg_cb(const struct unicast_hdr_t *header,
+                           const linkaddr_t *sender) {
   /*TODO*/
   LOG_FATAL("HEYYYYYYYYYYYY BOYYYYYYYYYY from %02x:%02x", sender->u8[0],
             sender->u8[1]);

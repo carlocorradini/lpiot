@@ -87,14 +87,13 @@ const struct etc_event_t *etc_get_current_event(void);
  * @brief Start event dissemination.
  * If events are suppressed no dissemination to avoid contention.
  * Used only by Sensor node.
- * Returns 0 if new events are currently suppressed.
  *
  * @param value Sensed value.
  * @param threshold Current threshold.
- * @return
+ * @return true Started event dissemination.
+ * @return false Event(s) are suppressed.
  */
-/* FIXME RETURN */
-int etc_trigger(uint32_t value, uint32_t threshold);
+bool etc_trigger(uint32_t value, uint32_t threshold);
 
 /**
  * @brief Send the command to the receiver node.
