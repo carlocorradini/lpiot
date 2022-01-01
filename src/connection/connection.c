@@ -1,12 +1,11 @@
 #include "connection.h"
 
+#include <net/mac/mac.h>
 #include <net/rime/broadcast.h>
 #include <net/rime/unicast.h>
 
 #include "beacon/beacon.h"
 #include "logger/logger.h"
-
-const struct connection_t *const best_conn;
 
 /**
  * @brief Connection callbacks pointer.
@@ -41,6 +40,15 @@ static const struct broadcast_callbacks bc_cb = {.recv = bc_recv_cb,
 static struct unicast_conn uc_conn;
 
 /**
+ * @brief Send a unicast message to receiver address.
+ *
+ * @param receiver Receiver address.
+ * @return
+ */
+/* FIXME return */
+static int uc_send(const linkaddr_t *receiver);
+
+/**
  * @brief Unicast receive callback.
  *
  * @param uc_conn Unicast connection.
@@ -49,10 +57,19 @@ static struct unicast_conn uc_conn;
 static void uc_recv_cb(struct unicast_conn *uc_conn, const linkaddr_t *sender);
 
 /**
+ * @brief Unicast sent callback.
+ *
+ * @param uc_conn Unicast connection.
+ * @param status Status code.
+ * @param num_tx Total number of transmission(s).
+ */
+static void uc_sent_cb(struct unicast_conn *uc_conn, int status, int num_tx);
+
+/**
  * @brief Unicast callback structure.
  */
 static const struct unicast_callbacks uc_cb = {.recv = uc_recv_cb,
-                                               .sent = NULL};
+                                               .sent = uc_sent_cb};
 
 /* --- --- */
 void connection_open(uint16_t channel,
@@ -64,7 +81,7 @@ void connection_open(uint16_t channel,
   unicast_open(&uc_conn, channel + 1, &uc_cb);
 
   /* Initialize beacon */
-  beacon_init(best_conn);
+  beacon_init();
 }
 
 void connection_close(void) {
@@ -76,8 +93,12 @@ void connection_close(void) {
   beacon_terminate();
 }
 
-bool connection_is_connected() {
-  return !linkaddr_cmp(&best_conn->parent_node, &linkaddr_null);
+bool connection_is_connected(void) { return connection_get_conn() != NULL; }
+
+const struct connection_t *connection_get_conn(void) {
+  const struct connection_t *conn = beacon_get_conn();
+  if (linkaddr_cmp(&conn->parent_node, &linkaddr_null)) return NULL;
+  return conn;
 }
 
 /* --- BROADCAST --- */
@@ -85,7 +106,6 @@ int connection_broadcast_send(enum broadcast_msg_type_t type) {
   /* Prepare broadcast header */
   const struct broadcast_hdr_t bc_header = {.type = type};
 
-  if (!connection_is_connected()) return -1; /* Disconnected */
   if (!packetbuf_hdralloc(sizeof(bc_header)))
     return -2; /* Insufficient space */
 
@@ -146,6 +166,18 @@ static void bc_recv_cb(struct broadcast_conn *bc_conn,
 }
 
 /* --- UNICAST --- */
+static int uc_send(const linkaddr_t *receiver) {
+  const int ret = unicast_send(&uc_conn, receiver);
+
+  if (!ret)
+    LOG_ERROR("Error sending unicast message to %02x:%02x", receiver->u8[0],
+              receiver->u8[1]);
+  else
+    LOG_DEBUG("Unicast message to %02x:%02x sent successfully", receiver->u8[0],
+              receiver->u8[1]);
+  return ret;
+}
+
 int connection_unicast_send(enum unicast_msg_type_t type,
                             const linkaddr_t *receiver) {
   /* Prepare unicast header */
@@ -159,14 +191,7 @@ int connection_unicast_send(enum unicast_msg_type_t type,
   memcpy(packetbuf_hdrptr(), &uc_header, sizeof(uc_header));
 
   /* Send */
-  const int ret = unicast_send(&uc_conn, receiver);
-  if (!ret)
-    LOG_ERROR("Error sending unicast message to %02x:%02x", receiver->u8[0],
-              receiver->u8[1]);
-  else
-    LOG_DEBUG("Unicast message to %02x:%02x sent successfully", receiver->u8[0],
-              receiver->u8[1]);
-  return ret;
+  return uc_send(receiver);
 }
 
 static void uc_recv_cb(struct unicast_conn *uc_conn, const linkaddr_t *sender) {
@@ -202,4 +227,56 @@ static void uc_recv_cb(struct unicast_conn *uc_conn, const linkaddr_t *sender) {
       break;
     }
   }
+}
+
+static void uc_sent_cb(struct unicast_conn *uc_conn, int status, int num_tx) {
+  /* Receiver address */
+  const linkaddr_t *receiver = packetbuf_addr(PACKETBUF_ADDR_RECEIVER);
+  /* Current connection  */
+  const struct connection_t *conn = connection_get_conn();
+
+  /* Ignore if null address */
+  if (linkaddr_cmp(receiver, &linkaddr_null)) {
+    LOG_WARN("Unicast message sent to NULL address %02x:%02x", receiver->u8[0],
+             receiver->u8[1]);
+    return;
+  }
+
+  /* Check status */
+  if (status != MAC_TX_OK) {
+    /* Something bad happended */
+    LOG_ERROR("Error sending unicast message to %02x:%02x in tx %d due to %d",
+              receiver->u8[0], receiver->u8[1], num_tx, status);
+
+    /* Ignore backup if receiver is not parent node */
+    if (!linkaddr_cmp(receiver, &conn->parent_node)) return;
+
+    /* Invalidate current connection */
+    LOG_WARN(
+        "Invalid connection: { parent_node: %02x:%02x, seqn: %u, "
+        "hopn: %u, rssi: %d }",
+        conn->parent_node.u8[0], conn->parent_node.u8[1], conn->seqn,
+        conn->hopn, conn->rssi);
+    beacon_invalidate_connection();
+
+    /* Check if backup connection is available */
+    if (!connection_is_connected()) {
+      LOG_WARN("Unavailable backup connection");
+      return;
+    }
+
+    LOG_INFO(
+        "Available backup connection: { parent_node: %02x:%02x, seqn: %u, "
+        "hopn: %u, rssi: %d }",
+        conn->parent_node.u8[0], conn->parent_node.u8[1], conn->seqn,
+        conn->hopn, conn->rssi);
+
+    /* Retry */
+    uc_send(receiver);
+    return;
+  }
+
+  /* Message sent successfully */
+  LOG_INFO("Unicast message to %02x:%02x sent successfully", receiver->u8[0],
+           receiver->u8[1]);
 }

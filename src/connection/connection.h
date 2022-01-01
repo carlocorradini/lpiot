@@ -27,13 +27,6 @@ struct connection_t {
   uint16_t rssi;
 };
 
-/**
- * @brief Best connection pointer.
- * Represents the best connection for communication
- * in the architecture.
- */
-extern const struct connection_t *const best_conn;
-
 /* --- BROADCAST --- */
 /**
  * @brief Broadcast message types.
@@ -139,15 +132,25 @@ void connection_open(uint16_t channel,
 void connection_close(void);
 
 /**
- * @brief Check if there is a valid connection.
+ * @brief Return connection status.
+ * Simply return true if the connection is established.
  *
  * @return true Connected.
  * @return false Disconnected.
  */
-bool connection_is_connected();
+bool connection_is_connected(void);
+
+/**
+ * @brief Return the established connection.
+ * Return NULL if disconnected.
+ *
+ * @return Established connection, NULL otherwise.
+ */
+const struct connection_t *connection_get_conn(void);
 
 /**
  * @brief Send a broadcast message.
+ * A header is added.
  *
  * @param type Message type.
  * @return 1 if the message has been sent.
@@ -159,9 +162,10 @@ int connection_broadcast_send(enum broadcast_msg_type_t type);
 
 /**
  * @brief Send a unicast message to receiver.
+ * A header is added.
  *
  * @param type Message type.
- * @param receiver
+ * @param receiver Receiver address.
  * @return 1 if the message has been sent.
  * 0 if the message could not be sent due to a generic error.
  * -1 if disconnected.

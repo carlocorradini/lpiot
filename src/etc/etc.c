@@ -281,7 +281,7 @@ static void collect_timer_cb(void *ignored) {
   linkaddr_copy(&collect_msg.event_source, &event.source);
 
   /* Send collect message */
-  send_collect_message(&collect_msg, &best_conn->parent_node);
+  send_collect_message(&collect_msg, &connection_get_conn()->parent_node);
 }
 
 static int send_collect_message(const struct collect_msg_t *collect_msg,

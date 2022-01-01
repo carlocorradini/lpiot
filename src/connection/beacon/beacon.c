@@ -61,7 +61,7 @@ static void reset_connections_idx(size_t index);
  * @brief Shift connections to right starting from index.
  * From parameter must be within the range of the array (0, length - 1).
  * Example:
- * [1 2 3 FROM -> 5 6 7] -> [1 2 3 ? 4 5 6]
+ * [1 2 3 FROM 5 6 7] -> [1 2 3 ? 4 5 6]
  *
  * @param from Start index to shift from.
  */
@@ -71,24 +71,19 @@ static void shift_right_connections(size_t from);
  * @brief Shift connections to left starting from index.
  * From parameter must be within the range of the array (0, length - 1).
  * Example:
- * [1 2 3 FROM <- 5 6 7] -> [1 2 3 5 6 7 ?]
+ * [1 2 3 FROM 5 6 7] -> [1 2 3 5 6 7 ?]
  *
  * @param from Start index to shift from.
  */
 static void shift_left_connections(size_t from);
 
-#ifdef DEBUG
 /**
  * @brief Print connection(s) array.
  */
 static void print_connections(void);
-#endif
 
 /* --- --- */
-void beacon_init(const struct connection_t *best_connection) {
-  /* Best connection is always first in connections */
-  best_connection = &connections[0];
-
+void beacon_init(void) {
   /* Initialize connection structure */
   reset_connections();
 
@@ -104,6 +99,11 @@ void beacon_terminate(void) {
   /* FIXME I timer??? */
   /* FIXME Resetto anche la connessione o no? */
   reset_connections();
+}
+
+const struct connection_t *beacon_get_conn(void) {
+  /* Best connection is always the first */
+  return &connections[0];
 }
 
 static void send_beacon_message(const struct beacon_msg_t *beacon_msg) {
@@ -170,6 +170,8 @@ void beacon_recv_cb(const struct broadcast_hdr_t *header,
     shift_right_connections(connection_index);
   } else {
     /* Greater sequence number, reset connections */
+    LOG_DEBUG("Reset connections: seqn %u to seqn %u", connections[0].seqn,
+              beacon_msg.seqn);
     reset_connections();
   }
 
@@ -180,10 +182,7 @@ void beacon_recv_cb(const struct broadcast_hdr_t *header,
   connections[connection_index].rssi = rssi;
 
 #ifdef DEBUG
-  logger_set_newline(false);
-  LOG_DEBUG("Connections: ");
   print_connections();
-  logger_set_newline(true);
 #endif
 
   if (connection_index == 0) {
@@ -221,6 +220,15 @@ static void beacon_timer_cb(void *ignored) {
   }
 }
 
+/* --- CONNECTIONS --- */
+void beacon_invalidate_connection(void) {
+  /* Shift connections to left removing current best connection */
+  shift_left_connections(0);
+#ifdef DEBUG
+  print_connections();
+#endif
+}
+
 static void reset_connections(void) {
   size_t i;
   for (i = 0; i < CONNECTION_BEACON_MAX_CONNECTIONS; ++i) {
@@ -242,7 +250,10 @@ static void shift_right_connections(size_t from) {
 
   size_t i;
   for (i = CONNECTION_BEACON_MAX_CONNECTIONS - 1; i > from; --i) {
-    connections[i] = connections[i - 1];
+    linkaddr_copy(&connections[i].parent_node, &connections[i - 1].parent_node);
+    connections[i].seqn = connections[i - 1].seqn;
+    connections[i].hopn = connections[i - 1].hopn;
+    connections[i].rssi = connections[i - 1].rssi;
   }
 
   reset_connections_idx(from);
@@ -253,17 +264,21 @@ static void shift_left_connections(size_t from) {
 
   size_t i;
   for (i = from; i < CONNECTION_BEACON_MAX_CONNECTIONS - 1; ++i) {
-    connections[i] = connections[i + 1];
+    linkaddr_copy(&connections[i].parent_node, &connections[i + 1].parent_node);
+    connections[i].seqn = connections[i + 1].seqn;
+    connections[i].hopn = connections[i + 1].hopn;
+    connections[i].rssi = connections[i + 1].rssi;
   }
 
-  reset_connections_idx(CONNECTION_BEACON_MAX_CONNECTIONS - 1);
+  reset_connections_idx(i);
 }
 
-#ifdef DEBUG
 static void print_connections(void) {
   size_t i;
   const struct connection_t *conn;
 
+  logger_set_newline(false);
+  LOG_DEBUG("Connections: ");
   printf("[ ");
   for (i = 0; i < CONNECTION_BEACON_MAX_CONNECTIONS; ++i) {
     conn = &connections[i];
@@ -272,5 +287,5 @@ static void print_connections(void) {
            conn->hopn, conn->rssi);
   }
   printf("]\n");
+  logger_set_newline(true);
 }
-#endif
