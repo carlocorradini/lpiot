@@ -176,9 +176,7 @@ void beacon_recv_cb(const struct broadcast_hdr_t *header,
   connections[connection_index].hopn = beacon_msg.hopn + 1;
   connections[connection_index].rssi = rssi;
 
-#ifdef DEBUG
   print_connections();
-#endif
 
   if (connection_index == 0) {
     /* New best (connection) parent */
@@ -219,9 +217,7 @@ static void beacon_timer_cb(void *ignored) {
 void beacon_invalidate_connection(void) {
   /* Shift connections to left removing current best connection */
   shift_left_connections(0);
-#ifdef DEBUG
   print_connections();
-#endif
 }
 
 static void reset_connections(void) {
@@ -269,6 +265,9 @@ static void shift_left_connections(size_t from) {
 }
 
 static void print_connections(void) {
+#ifndef DEBUG
+  return;
+#endif
   size_t i;
   const struct connection_t *conn;
 

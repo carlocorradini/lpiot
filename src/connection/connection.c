@@ -295,7 +295,7 @@ static void uc_sent_cb(struct unicast_conn *uc_conn, int status, int num_tx) {
 
     /* Invalidate current connection */
     LOG_WARN(
-        "Invalid connection: { parent_node: %02x:%02x, seqn: %u, "
+        "Invalidating connection: { parent_node: %02x:%02x, seqn: %u, "
         "hopn: %u, rssi: %d }",
         conn->parent_node.u8[0], conn->parent_node.u8[1], conn->seqn,
         conn->hopn, conn->rssi);
@@ -307,14 +307,31 @@ static void uc_sent_cb(struct unicast_conn *uc_conn, int status, int num_tx) {
       return;
     }
 
+    /* New connection */
+    const struct connection_t *new_conn = connection_get_conn();
     LOG_INFO(
         "Available backup connection: { parent_node: %02x:%02x, seqn: %u, "
         "hopn: %u, rssi: %d }",
-        conn->parent_node.u8[0], conn->parent_node.u8[1], conn->seqn,
-        conn->hopn, conn->rssi);
+        new_conn->parent_node.u8[0], new_conn->parent_node.u8[1],
+        new_conn->seqn, new_conn->hopn, new_conn->rssi);
 
     /* Retry */
-    uc_send(receiver);
+    linkaddr_t data_receiver;
+    uint8_t data[PACKETBUF_SIZE];
+    uint16_t data_len;
+    struct unicast_hdr_t data_header;
+
+    linkaddr_copy(&data_receiver, receiver);
+    packetbuf_copyto(&data);
+    data_len = packetbuf_datalen();
+    memcpy(&data_header, packetbuf_dataptr() - sizeof(data_header),
+           sizeof(data_header));
+
+    packetbuf_clear();
+    packetbuf_copyfrom(&data, data_len);
+
+    connection_unicast_send(data_header.type, &new_conn->parent_node);
+
     return;
   }
 
