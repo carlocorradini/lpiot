@@ -116,7 +116,7 @@ static int bc_send(void) {
   if (!ret)
     LOG_ERROR("Error sending broadcast message");
   else
-    LOG_DEBUG("Broadcast message sent successfully");
+    LOG_DEBUG("Sending broadcast message");
   return ret;
 }
 
@@ -186,7 +186,7 @@ static int uc_send(const linkaddr_t *receiver) {
     LOG_ERROR("Error sending unicast message to %02x:%02x", receiver->u8[0],
               receiver->u8[1]);
   else
-    LOG_DEBUG("Unicast message to %02x:%02x sent successfully", receiver->u8[0],
+    LOG_DEBUG("Sending unicast message to %02x:%02x", receiver->u8[0],
               receiver->u8[1]);
   return ret;
 }
