@@ -92,8 +92,8 @@ void beacon_init(void) {
 }
 
 void beacon_terminate(void) {
-  /* FIXME I timer??? */
-  /* FIXME Resetto anche la connessione o no? */
+  /* FIXME I timer? */
+  /* Memoization o no? */
   reset_connections();
 }
 
@@ -150,26 +150,25 @@ void beacon_recv_cb(const struct broadcast_hdr_t *header,
     for (connection_index = 0;
          connection_index < CONNECTION_BEACON_MAX_CONNECTIONS;
          ++connection_index) {
+      if (beacon_msg.seqn > connections[connection_index].seqn)
+        break; /* Better -> New */
+
       if (beacon_msg.hopn + 1 > connections[connection_index].hopn)
-        continue; /* Far */
+        continue; /* Worse -> Far */
       if (beacon_msg.hopn + 1 == connections[connection_index].hopn &&
           rssi < connections[connection_index].rssi)
-        continue; /* Weak */
-      /* Found better parent node than ith */
+        continue; /* Worse -> Weak */
+
+      /* Better -> Near or Strong */
       break;
     }
 
     if (connection_index >= CONNECTION_BEACON_MAX_CONNECTIONS)
       return; /* Far or Weak */
-
-    /* Right shift connections to accomodate better ith parent node */
-    shift_right_connections(connection_index);
-  } else {
-    /* Greater sequence number, reset connections */
-    LOG_DEBUG("Reset connections: seqn %u to seqn %u", connections[0].seqn,
-              beacon_msg.seqn);
-    reset_connections();
   }
+
+  /* Right shift connections to accomodate better ith connection */
+  shift_right_connections(connection_index);
 
   /* Save better ith parent node */
   linkaddr_copy(&connections[connection_index].parent_node, sender);
