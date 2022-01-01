@@ -8,34 +8,22 @@
 #define __FILENAME__ \
   (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 
-/**
- * @brief Log a trace message.
- */
+/* Log a trace message. */
 #define LOG_TRACE(fmt, ...) \
   logger_log(LOG_LEVEL_TRACE, __FILENAME__, __LINE__, fmt, ##__VA_ARGS__)
-/**
- * @brief Log a debug message.
- */
+/* Log a debug message. */
 #define LOG_DEBUG(fmt, ...) \
   logger_log(LOG_LEVEL_DEBUG, __FILENAME__, __LINE__, fmt, ##__VA_ARGS__)
-/**
- * @brief Log an info message.
- */
+/* Log an info message. */
 #define LOG_INFO(fmt, ...) \
   logger_log(LOG_LEVEL_INFO, __FILENAME__, __LINE__, fmt, ##__VA_ARGS__)
-/**
- * @brief Log a warn message.
- */
+/* Log a warn message. */
 #define LOG_WARN(fmt, ...) \
   logger_log(LOG_LEVEL_WARN, __FILENAME__, __LINE__, fmt, ##__VA_ARGS__)
-/**
- * @brief Log an error message.
- */
+/* Log an error message. */
 #define LOG_ERROR(fmt, ...) \
   logger_log(LOG_LEVEL_ERROR, __FILENAME__, __LINE__, fmt, ##__VA_ARGS__)
-/**
- * @brief Log a fatal message.
- */
+/* Log a fatal message. */
 #define LOG_FATAL(fmt, ...) \
   logger_log(LOG_LEVEL_FATAL, __FILENAME__, __LINE__, fmt, ##__VA_ARGS__)
 
@@ -43,29 +31,17 @@
  * @brief Log levels.
  */
 enum log_level_t {
-  /**
-   * @brief Log level trace.
-   */
+  /* Trace level. */
   LOG_LEVEL_TRACE,
-  /**
-   * @brief Log level debug.
-   */
+  /* Debug level. */
   LOG_LEVEL_DEBUG,
-  /**
-   * @brief Log level info.
-   */
+  /* Info level. */
   LOG_LEVEL_INFO,
-  /**
-   * @brief Log level warn.
-   */
+  /* Warn level. */
   LOG_LEVEL_WARN,
-  /**
-   * @brief Log level error.
-   */
+  /* Error level. */
   LOG_LEVEL_ERROR,
-  /**
-   * @brief Log level fatal.
-   */
+  /* Fatal level. */
   LOG_LEVEL_FATAL,
 };
 

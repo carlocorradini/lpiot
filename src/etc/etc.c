@@ -37,14 +37,10 @@ static struct ctimer collect_timer;
  * @brief  Event message.
  */
 struct event_msg_t {
-  /**
-   * @brief Address of the sensor that generated the event.
-   */
-  linkaddr_t event_source;
-  /**
-   * @brief Event sequence number.
-   */
-  uint16_t event_seqn;
+  /* Address of the sensor that generated the event. */
+  linkaddr_t source;
+  /* Event sequence number. */
+  uint16_t seqn;
 } __attribute__((packed));
 
 /* FIXME Mumble on header */
@@ -52,13 +48,9 @@ struct event_msg_t {
  * @brief Header structure for data packets.
  */
 struct collect_msg_t {
-  /**
-   * @brief Address of the sensor that generated the event.
-   */
+  /* Address of the sensor that generated the event. */
   linkaddr_t event_source;
-  /**
-   * @brief Event sequence number.
-   */
+  /* Event sequence number. */
   uint16_t event_seqn;
 } __attribute__((packed));
 
@@ -67,13 +59,9 @@ struct collect_msg_t {
  * @brief Header structure for command packets.
  */
 struct command_msg_t {
-  /**
-   * @brief Address of the sensor that generated the event.
-   */
+  /* Address of the sensor that generated the event. */
   linkaddr_t event_source;
-  /**
-   * @brief Event sequence number.
-   */
+  /* Event sequence number. */
   uint16_t event_seqn;
 } __attribute__((packed));
 
@@ -174,8 +162,8 @@ int etc_trigger(uint32_t value, uint32_t threshold) {
 
   /* Prepare event message */
   struct event_msg_t event_msg;
-  event_msg.event_seqn = event.seqn;
-  linkaddr_copy(&event_msg.event_source, &event.source);
+  event_msg.seqn = event.seqn;
+  linkaddr_copy(&event_msg.source, &event.source);
 
   /* Start to suppress new trigger(s) */
   ctimer_set(&suppression_timer_new, SUPPRESSION_TIMEOUT_NEW, NULL, NULL);
@@ -218,12 +206,12 @@ void event_msg_cb(const struct broadcast_hdr_t *header,
   LOG_INFO(
       "Received event message from %02x:%02x: "
       "{ seqn: %u, source: %02x:%02x}",
-      sender->u8[0], sender->u8[1], event_msg.event_seqn,
-      event_msg.event_source.u8[0], event_msg.event_source.u8[1]);
+      sender->u8[0], sender->u8[1], event_msg.seqn, event_msg.source.u8[0],
+      event_msg.source.u8[1]);
 
   /* Update event */
-  event.seqn = event_msg.event_seqn;
-  linkaddr_copy(&event.source, &event_msg.event_source);
+  event.seqn = event_msg.seqn;
+  linkaddr_copy(&event.source, &event_msg.source);
 
   /* Start to suppress new event message(s) */
   ctimer_set(&suppression_timer_propagation, SUPPRESSION_TIMEOUT_PROP, NULL,
@@ -242,8 +230,8 @@ void event_msg_cb(const struct broadcast_hdr_t *header,
 static void event_timer_cb(void *ignored) {
   /* Prepare event message */
   struct event_msg_t event_msg;
-  event_msg.event_seqn = event.seqn;
-  linkaddr_copy(&event_msg.event_source, &event.source);
+  event_msg.seqn = event.seqn;
+  linkaddr_copy(&event_msg.source, &event.source);
 
   /* Send event message */
   send_event_message(&event_msg);
@@ -260,8 +248,7 @@ static int send_event_message(const struct event_msg_t *event_msg) {
     LOG_ERROR("Error sending event message: %d", ret);
   else
     LOG_INFO("Sending event message: { seqn: %u, source: %02x:%02x }",
-             event_msg->event_seqn, event_msg->event_source.u8[0],
-             event_msg->event_source.u8[1]);
+             event_msg->seqn, event_msg->source.u8[0], event_msg->source.u8[1]);
 
   return ret;
 }

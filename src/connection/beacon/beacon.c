@@ -7,24 +7,20 @@
 #include "node/node.h"
 
 /**
+ * @brief Beacon message structure.
+ */
+struct beacon_msg_t {
+  /* Sequence number. */
+  uint16_t seqn;
+  /* Hop number. */
+  uint16_t hopn;
+} __attribute__((packed));
+
+/**
  * @brief Connection(s) object.
  * Ordered from best (0) to worst (length-1).
  */
 static struct connection_t connections[CONNECTION_BEACON_MAX_CONNECTIONS];
-
-/**
- * @brief Beacon message structure.
- */
-struct beacon_msg_t {
-  /**
-   * @brief Sequence number.
-   */
-  uint16_t seqn;
-  /**
-   * @brief Hop number.
-   */
-  uint16_t hopn;
-} __attribute__((packed));
 
 /**
  * @brief Beacon message generation timer.

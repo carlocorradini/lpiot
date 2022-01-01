@@ -9,21 +9,13 @@
  * @brief Connection object.
  */
 struct connection_t {
-  /**
-   * @brief Parent node address.
-   */
+  /* Parent node address. */
   linkaddr_t parent_node;
-  /**
-   * @brief Sequence number.
-   */
+  /* Sequence number. */
   uint16_t seqn;
-  /**
-   * @brief Hop number.
-   */
+  /* Hop number. */
   uint16_t hopn;
-  /**
-   * @brief RSSI parent node.
-   */
+  /* RSSI parent node. */
   uint16_t rssi;
 };
 
@@ -32,13 +24,9 @@ struct connection_t {
  * @brief Broadcast message types.
  */
 enum broadcast_msg_type_t {
-  /**
-   * @brief Beacon message.
-   */
+  /* Beacon message. */
   BROADCAST_MSG_TYPE_BEACON,
-  /**
-   * @brief Event message.
-   */
+  /* Event message. */
   BROADCAST_MSG_TYPE_EVENT
 };
 
@@ -46,9 +34,7 @@ enum broadcast_msg_type_t {
  * @brief Broadcast header.
  */
 struct broadcast_hdr_t {
-  /**
-   * @brief Type of message.
-   */
+  /* Type of message. */
   enum broadcast_msg_type_t type;
 } __attribute__((packed));
 
@@ -57,9 +43,7 @@ struct broadcast_hdr_t {
  * @brief Unicast message types.
  */
 enum unicast_msg_type_t {
-  /**
-   * @brief Collect message.
-   */
+  /* Collect message. */
   UNICAST_MSG_TYPE_COLLECT
 };
 
@@ -67,9 +51,7 @@ enum unicast_msg_type_t {
  * @brief Unicast header.
  */
 struct unicast_hdr_t {
-  /**
-   * @brief Type of message.
-   */
+  /* Type of message. */
   enum unicast_msg_type_t type;
 } __attribute__((packed));
 
@@ -78,38 +60,24 @@ struct unicast_hdr_t {
  * @brief Connection callbacks.
  */
 struct connection_callbacks_t {
-  /**
-   * @brief Broadcast callbacks.
-   */
+  /* Broadcast callbacks. */
   struct bc_t {
-    /**
-     * @brief Broadcast receive callbacks.
-     */
+    /* Broadcast receive callbacks. */
     struct bc_recv_t {
-      /**
-       * @brief Beacon message callback.
-       */
+      /* Beacon message callback. */
       void (*beacon)(const struct broadcast_hdr_t *header,
                      const linkaddr_t *sender);
-      /**
-       * @brief Event message callback.
-       */
+      /* Event message callback. */
       void (*event)(const struct broadcast_hdr_t *header,
                     const linkaddr_t *sender);
     } recv;
   } bc;
 
-  /**
-   * @brief Unicast callbacks.
-   */
+  /* Unicast callbacks. */
   struct uc_t {
-    /**
-     * @brief Unicast receive callbacks.
-     */
+    /* Unicast receive callbacks. */
     struct uc_recv_t {
-      /**
-       * @brief Collect message callback.
-       */
+      /* Collect message callback. */
       void (*collect)(const struct unicast_hdr_t *header,
                       const linkaddr_t *sender);
     } recv;

@@ -12,7 +12,7 @@
  */
 struct etc_callbacks_t {
   /**
-   * @brief Data collection reception callback.
+   * Data collection reception callback.
    * The Controller sets this callback to store the readings of all sensors.
    * When all readings have been collected, the Controller can send commands.
    *
@@ -27,7 +27,7 @@ struct etc_callbacks_t {
                      uint32_t threshold);
 
   /**
-   * @brief Event detection callback.
+   * Event detection callback.
    * This callback notifies the Controller of an ongoing event dissemination.
    * After this notification, the Controller waits for sensor readings.
    * The event callback should come with the event_source (the address of the
@@ -40,7 +40,7 @@ struct etc_callbacks_t {
   void (*event_cb)(const linkaddr_t *event_source, uint16_t event_seqn);
 
   /**
-   * @brief Command reception callback.
+   * Command reception callback.
    * Notifies the Sensor/Actuator of a command from the Controller.
    *
    * @param event_source Event source node.
@@ -56,13 +56,9 @@ struct etc_callbacks_t {
  * @brief Event object.
  */
 struct etc_event_t {
-  /**
-   * @brief Sequence number.
-   */
+  /* Sequence number. */
   uint16_t seqn;
-  /**
-   * @brief Address of the generator node.
-   */
+  /* Address of the generator node. */
   linkaddr_t source;
 };
 

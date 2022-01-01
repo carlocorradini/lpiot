@@ -5,21 +5,13 @@
  * @brief Node roles.
  */
 enum node_role_t {
-  /**
-   * @brief Unknown role.
-   */
+  /* Unknown role. */
   NODE_ROLE_UNKNOWN,
-  /**
-   * @brief Controller node.
-   */
+  /* Controller node. */
   NODE_ROLE_CONTROLLER,
-  /**
-   * @brief Sensor/Actuator node.
-   */
+  /* Sensor/Actuator node. */
   NODE_ROLE_SENSOR_ACTUATOR,
-  /**
-   * @brief Forwarder node.
-   */
+  /* Forwarder node. */
   NODE_ROLE_FORWARDER
 };
 
@@ -27,17 +19,11 @@ enum node_role_t {
  * @brief Command types.
  */
 enum command_type_t {
-  /**
-   * @brief Don't do anything (ignore).
-   */
+  /* Don't do anything (ignore). */
   COMMAND_TYPE_NONE,
-  /**
-   * @brief Sensed value should go to 0, and the threshold back to normal.
-   */
+  /* Sensed value should go to 0, and the threshold back to normal. */
   COMMAND_TYPE_RESET,
-  /**
-   * @brief Sensed value should not be modified, but the threshold should be
-   * increased.
+  /* Sensed value should not be modified, but the threshold should be increased.
    */
   COMMAND_TYPE_THRESHOLD
 };
