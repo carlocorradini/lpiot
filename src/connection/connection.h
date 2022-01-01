@@ -121,12 +121,10 @@ const struct connection_t *connection_get_conn(void);
  * A header is added.
  *
  * @param type Message type.
- * @return 1 if the message has been sent.
- * 0 if the message could not be sent due to a generic error.
- * -1 if disconnected.
- * -2 if unable to allocate sufficient header space.
+ * @return true Message sent.
+ * @return false Message not sent due to an error.
  */
-int connection_broadcast_send(enum broadcast_msg_type_t type);
+bool connection_broadcast_send(enum broadcast_msg_type_t type);
 
 /**
  * @brief Send a unicast message to receiver.
@@ -134,12 +132,10 @@ int connection_broadcast_send(enum broadcast_msg_type_t type);
  *
  * @param type Message type.
  * @param receiver Receiver address.
- * @return 1 if the message has been sent.
- * 0 if the message could not be sent due to a generic error.
- * -1 if disconnected.
- * -2 if unable to allocate sufficient header space.
+ * @return true Message sent.
+ * @return false Message not sent due to an error.
  */
-int connection_unicast_send(enum unicast_msg_type_t type,
-                            const linkaddr_t *receiver);
+bool connection_unicast_send(enum unicast_msg_type_t type,
+                             const linkaddr_t *receiver);
 
 #endif

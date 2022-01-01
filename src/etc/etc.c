@@ -86,10 +86,10 @@ static void event_timer_cb(void *ignored);
  * @brief Send event message.
  *
  * @param event_msg Event message to send.
- * @return
+ * @return true Event message sent.
+ * @return false Event message not sent due to an error.
  */
-/*TODO RETURN*/
-static int send_event_message(const struct event_msg_t *event_msg);
+static bool send_event_message(const struct event_msg_t *event_msg);
 
 /* --- COLLECT MESSAGE --- */
 /**
@@ -116,8 +116,8 @@ static void collect_timer_cb(void *ignored);
  * @return
  */
 /* TODO RETURN*/
-static int send_collect_message(const struct collect_msg_t *collect_msg,
-                                const linkaddr_t *receiver);
+static bool send_collect_message(const struct collect_msg_t *collect_msg,
+                                 const linkaddr_t *receiver);
 
 /* --- CONNECTION --- */
 /**
@@ -237,13 +237,13 @@ static void event_timer_cb(void *ignored) {
   send_event_message(&event_msg);
 }
 
-static int send_event_message(const struct event_msg_t *event_msg) {
+static bool send_event_message(const struct event_msg_t *event_msg) {
   /* Prepare packetbuf */
   packetbuf_clear();
   packetbuf_copyfrom(event_msg, sizeof(struct event_msg_t));
 
   /* Send event message in broadcast */
-  const int ret = connection_broadcast_send(BROADCAST_MSG_TYPE_EVENT);
+  const bool ret = connection_broadcast_send(BROADCAST_MSG_TYPE_EVENT);
   if (!ret)
     LOG_ERROR("Error sending event message: %d", ret);
   else
@@ -271,14 +271,14 @@ static void collect_timer_cb(void *ignored) {
   send_collect_message(&collect_msg, &connection_get_conn()->parent_node);
 }
 
-static int send_collect_message(const struct collect_msg_t *collect_msg,
-                                const linkaddr_t *receiver) {
+static bool send_collect_message(const struct collect_msg_t *collect_msg,
+                                 const linkaddr_t *receiver) {
   /* Prepare packetbuf */
   packetbuf_clear();
   packetbuf_copyfrom(collect_msg, sizeof(struct collect_msg_t));
 
   /* Send collect message in unicast to receiver node */
-  const int ret = connection_unicast_send(UNICAST_MSG_TYPE_COLLECT, receiver);
+  const bool ret = connection_unicast_send(UNICAST_MSG_TYPE_COLLECT, receiver);
   if (!ret)
     LOG_ERROR("Error sending collect message: %d", ret);
   else

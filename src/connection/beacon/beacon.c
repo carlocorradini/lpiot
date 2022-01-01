@@ -108,7 +108,7 @@ static void send_beacon_message(const struct beacon_msg_t *beacon_msg) {
   packetbuf_copyfrom(beacon_msg, sizeof(struct beacon_msg_t));
 
   /* Send beacon message in broadcast */
-  const int ret = connection_broadcast_send(BROADCAST_MSG_TYPE_BEACON);
+  const bool ret = connection_broadcast_send(BROADCAST_MSG_TYPE_BEACON);
   if (!ret) {
     /* Error */
     LOG_ERROR("Error sending beacon message: %d", ret);

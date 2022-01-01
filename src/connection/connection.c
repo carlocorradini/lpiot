@@ -21,10 +21,10 @@ static struct broadcast_conn bc_conn;
 /**
  * @brief Send a broadcast message.
  *
- * @return
+ * @return true Message sent.
+ * @return false Message not sent due to an error.
  */
-/* FIXME return */
-static int bc_send(void);
+static bool bc_send(void);
 
 /**
  * @brief Broadcast receive callback.
@@ -51,10 +51,10 @@ static struct unicast_conn uc_conn;
  * @brief Send a unicast message to receiver address.
  *
  * @param receiver Receiver address.
- * @return
+ * @return true Message sent.
+ * @return false Message not sent due to an error.
  */
-/* FIXME return */
-static int uc_send(const linkaddr_t *receiver);
+static bool uc_send(const linkaddr_t *receiver);
 
 /**
  * @brief Unicast receive callback.
@@ -110,8 +110,8 @@ const struct connection_t *connection_get_conn(void) {
 }
 
 /* --- BROADCAST --- */
-static int bc_send(void) {
-  const int ret = broadcast_send(&uc_conn);
+static bool bc_send(void) {
+  const bool ret = broadcast_send(&uc_conn);
 
   if (!ret)
     LOG_ERROR("Error sending broadcast message");
@@ -120,12 +120,16 @@ static int bc_send(void) {
   return ret;
 }
 
-int connection_broadcast_send(enum broadcast_msg_type_t type) {
+bool connection_broadcast_send(enum broadcast_msg_type_t type) {
   /* Prepare broadcast header */
   const struct broadcast_hdr_t bc_header = {.type = type};
 
-  if (!packetbuf_hdralloc(sizeof(bc_header)))
-    return -2; /* Insufficient space */
+  /* Allocate header space */
+  if (!packetbuf_hdralloc(sizeof(bc_header))) {
+    /* Insufficient space */
+    LOG_ERROR("Error allocating broadcast header");
+    return false;
+  }
 
   /* Copy header */
   memcpy(packetbuf_hdrptr(), &bc_header, sizeof(bc_header));
@@ -179,7 +183,7 @@ static void bc_recv_cb(struct broadcast_conn *bc_conn,
 }
 
 /* --- UNICAST --- */
-static int uc_send(const linkaddr_t *receiver) {
+static bool uc_send(const linkaddr_t *receiver) {
   const int ret = unicast_send(&uc_conn, receiver);
 
   if (!ret)
@@ -191,13 +195,17 @@ static int uc_send(const linkaddr_t *receiver) {
   return ret;
 }
 
-int connection_unicast_send(enum unicast_msg_type_t type,
-                            const linkaddr_t *receiver) {
+bool connection_unicast_send(enum unicast_msg_type_t type,
+                             const linkaddr_t *receiver) {
   /* Prepare unicast header */
   const struct unicast_hdr_t uc_header = {.type = type};
 
-  if (!packetbuf_hdralloc(sizeof(uc_header)))
-    return -2; /* Insufficient space */
+  /* Allocate header space */
+  if (!packetbuf_hdralloc(sizeof(uc_header))) {
+    /* Insufficient space */
+    LOG_ERROR("Error allocating unicast header");
+    return false;
+  }
 
   /* Copy header */
   memcpy(packetbuf_hdrptr(), &uc_header, sizeof(uc_header));
