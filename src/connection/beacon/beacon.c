@@ -7,8 +7,8 @@
 #include "node/node.h"
 
 /**
- * @brief Beacon connection(s) object.
- * Ordered from best (index 0) to worst (index length-1).
+ * @brief Connection(s) object.
+ * Ordered from best (0) to worst (length-1).
  */
 static struct connection_t connections[CONNECTION_BEACON_MAX_CONNECTIONS];
 
@@ -32,18 +32,18 @@ struct beacon_msg_t {
 static struct ctimer beacon_timer;
 
 /**
- * @brief Send beacon message.
- *
- * @param beacon_msg Beacon message to send.
- */
-static void send_beacon_message(const struct beacon_msg_t *beacon_msg);
-
-/**
  * @brief Beacon timer callback.
  *
  * @param ignored.
  */
 static void beacon_timer_cb(void *ignored);
+
+/**
+ * @brief Send beacon message.
+ *
+ * @param beacon_msg Beacon message to send.
+ */
+static void send_beacon_message(const struct beacon_msg_t *beacon_msg);
 
 /**
  * @brief Reset connections to default values.

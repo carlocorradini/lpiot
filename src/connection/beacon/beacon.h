@@ -23,7 +23,7 @@ void beacon_terminate(void);
 const struct connection_t *beacon_get_conn(void);
 
 /**
- * @brief Broadcast receive callback.
+ * @brief Beacon receive callback.
  *
  * @param header Broadcast header.
  * @param sender Address of the sender node.
@@ -33,8 +33,7 @@ void beacon_recv_cb(const struct broadcast_hdr_t *header,
 
 /**
  * @brief Invalidate current connection.
- * After invalidation the new connection is the next available backup
- * connection.
+ * New connection (if any) is the next available backup connection.
  */
 void beacon_invalidate_connection(void);
 
