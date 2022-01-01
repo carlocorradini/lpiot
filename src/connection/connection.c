@@ -131,7 +131,7 @@ int connection_broadcast_send(enum broadcast_msg_type_t type) {
   memcpy(packetbuf_hdrptr(), &bc_header, sizeof(bc_header));
 
   /* Send */
-  bc_send();
+  return bc_send();
 }
 
 static void bc_recv_cb(struct broadcast_conn *bc_conn,
@@ -196,7 +196,6 @@ int connection_unicast_send(enum unicast_msg_type_t type,
   /* Prepare unicast header */
   const struct unicast_hdr_t uc_header = {.type = type};
 
-  if (!connection_is_connected()) return -1; /* Disconnected */
   if (!packetbuf_hdralloc(sizeof(uc_header)))
     return -2; /* Insufficient space */
 
