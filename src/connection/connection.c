@@ -19,6 +19,14 @@ static const struct connection_callbacks_t *cb;
 static struct broadcast_conn bc_conn;
 
 /**
+ * @brief Send a broadcast message.
+ *
+ * @return
+ */
+/* FIXME return */
+static int bc_send(void);
+
+/**
  * @brief Broadcast receive callback.
  *
  * @param bc_conn Broadcast connection.
@@ -102,6 +110,16 @@ const struct connection_t *connection_get_conn(void) {
 }
 
 /* --- BROADCAST --- */
+static int bc_send(void) {
+  const int ret = broadcast_send(&uc_conn);
+
+  if (!ret)
+    LOG_ERROR("Error sending broadcast message");
+  else
+    LOG_DEBUG("Broadcast message sent successfully");
+  return ret;
+}
+
 int connection_broadcast_send(enum broadcast_msg_type_t type) {
   /* Prepare broadcast header */
   const struct broadcast_hdr_t bc_header = {.type = type};
@@ -113,12 +131,7 @@ int connection_broadcast_send(enum broadcast_msg_type_t type) {
   memcpy(packetbuf_hdrptr(), &bc_header, sizeof(bc_header));
 
   /* Send */
-  const int ret = broadcast_send(&bc_conn);
-  if (!ret)
-    LOG_ERROR("Error sending broadcast message of type %d", type);
-  else
-    LOG_DEBUG("Broadcast message of type %d sent successfully", type);
-  return ret;
+  bc_send();
 }
 
 static void bc_recv_cb(struct broadcast_conn *bc_conn,
