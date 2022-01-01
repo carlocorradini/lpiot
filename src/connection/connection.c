@@ -324,6 +324,7 @@ static void uc_sent_cb(struct unicast_conn *uc_conn, int status, int num_tx) {
     linkaddr_copy(&data_receiver, receiver);
     packetbuf_copyto(&data);
     data_len = packetbuf_datalen();
+    /* FIXME Non funziona */
     memcpy(&data_header, packetbuf_dataptr() - sizeof(data_header),
            sizeof(data_header));
 
