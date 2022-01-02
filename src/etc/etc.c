@@ -1,5 +1,7 @@
 #include "etc.h"
 
+#include <net/mac/mac.h>
+
 #include "config/config.h"
 #include "net/packetbuf.h"
 
@@ -90,6 +92,8 @@ static void event_timer_cb(void *ignored);
 static bool send_event_message(const struct event_msg_t *event_msg);
 
 /* --- COLLECT MESSAGE --- */
+static bool sending_collect_msg = false;
+
 /**
  * @brief Collect message receive callback.
  *
@@ -139,14 +143,6 @@ static void command_msg_cb(const struct unicast_hdr_t *header,
 static void bc_recv(const struct broadcast_hdr_t *header,
                     const linkaddr_t *sender);
 
-/**
- * @brief Broadcast sent callback.
- *
- * @param status Status code.
- * @param num_tx Number of transmission(s).
- */
-static void bc_sent(int status, int num_tx);
-
 /* --- Unicast */
 /**
  * @brief Unicast receive callback.
@@ -169,7 +165,7 @@ static void uc_sent(int status, int num_tx);
  * @brief Connection callbacks.
  */
 static struct connection_callbacks_t conn_cb = {
-    .bc = {.recv = bc_recv, .sent = bc_sent},
+    .bc = {.recv = bc_recv, .sent = NULL},
     .uc = {.recv = uc_recv, .sent = uc_sent}};
 
 /* --- --- */
@@ -246,9 +242,6 @@ static void bc_recv(const struct broadcast_hdr_t *header,
   }
 }
 
-static void bc_sent(int status, int num_tx) { /* TODO */
-}
-
 /* --- Unicast */
 static void uc_recv(const struct unicast_hdr_t *header,
                     const linkaddr_t *sender) {
@@ -268,7 +261,27 @@ static void uc_recv(const struct unicast_hdr_t *header,
   }
 }
 
-static void uc_sent(int status, int num_tx) { /* TODO */
+static void uc_sent(int status, int num_tx) {
+  if (status != MAC_TX_OK) {
+    /* Something bad happended */
+
+    /* Collect message */
+    if (sending_collect_msg) {
+      LOG_ERROR("Error sending collect message on tx %d due to %d", num_tx,
+                status);
+      sending_collect_msg = false;
+      /* Retry */
+      collect_timer_cb(NULL);
+    }
+
+    return;
+  }
+
+  /* Message sent */
+  if (sending_collect_msg) {
+    sending_collect_msg = false;
+    LOG_DEBUG("Sent collect message");
+  }
 }
 
 /* --- EVENT MESSAGE --- */
@@ -386,11 +399,13 @@ static bool send_collect_message(const struct collect_msg_t *collect_msg,
   const bool ret = connection_unicast_send(UNICAST_MSG_TYPE_COLLECT, receiver);
   if (!ret)
     LOG_ERROR("Error sending collect message: %d", ret);
-  else
+  else {
+    sending_collect_msg = true;
     LOG_INFO(
         "Sending collect message to %02x:%02x: { seqn: %u, source: %02x:%02x }",
         receiver->u8[0], receiver->u8[1], collect_msg->event_seqn,
         collect_msg->event_source.u8[0], collect_msg->event_source.u8[1]);
+  }
 
   return ret;
 }
