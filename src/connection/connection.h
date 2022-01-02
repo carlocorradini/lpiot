@@ -44,7 +44,9 @@ struct broadcast_hdr_t {
  */
 enum unicast_msg_type_t {
   /* Collect message. */
-  UNICAST_MSG_TYPE_COLLECT
+  UNICAST_MSG_TYPE_COLLECT,
+  /* Command message. */
+  UNICAST_MSG_TYPE_COMMAND
 };
 
 /**
@@ -62,25 +64,41 @@ struct unicast_hdr_t {
 struct connection_callbacks_t {
   /* Broadcast callbacks. */
   struct bc_t {
-    /* Broadcast receive callbacks. */
-    struct bc_recv_t {
-      /* Beacon message callback. */
-      void (*beacon)(const struct broadcast_hdr_t *header,
-                     const linkaddr_t *sender);
-      /* Event message callback. */
-      void (*event)(const struct broadcast_hdr_t *header,
-                    const linkaddr_t *sender);
-    } recv;
+    /**
+     * @brief Broadcast receive callback.
+     *
+     * @param header Broadcast header.
+     * @param sender Address of the sender node.
+     */
+    void (*recv)(const struct broadcast_hdr_t *header,
+                 const linkaddr_t *sender);
+
+    /**
+     * @brief Broadcast sent callback.
+     *
+     * @param status Status code.
+     * @param num_tx Number of transmission(s).
+     */
+    void (*sent)(int status, int num_tx);
   } bc;
 
   /* Unicast callbacks. */
   struct uc_t {
-    /* Unicast receive callbacks. */
-    struct uc_recv_t {
-      /* Collect message callback. */
-      void (*collect)(const struct unicast_hdr_t *header,
-                      const linkaddr_t *sender);
-    } recv;
+    /**
+     * @brief Unicast receive callback.
+     *
+     * @param header Unicast header.
+     * @param sender Address of the sender node.
+     */
+    void (*recv)(const struct unicast_hdr_t *header, const linkaddr_t *sender);
+
+    /**
+     * @brief Unicast sent callback.
+     *
+     * @param status Status code.
+     * @param num_tx Number of transmission(s).
+     */
+    void (*sent)(int status, int num_tx);
   } uc;
 };
 

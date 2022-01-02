@@ -119,12 +119,48 @@ static bool send_collect_message(const struct collect_msg_t *collect_msg,
                                  const linkaddr_t *receiver);
 
 /* --- CONNECTION --- */
+/* --- Broadcast */
+/**
+ * @brief Broadcast receive callback.
+ *
+ * @param header Broadcast header.
+ * @param sender Address of the sender node.
+ */
+static void bc_recv(const struct broadcast_hdr_t *header,
+                    const linkaddr_t *sender);
+
+/**
+ * @brief Broadcast sent callback.
+ *
+ * @param status Status code.
+ * @param num_tx Number of transmission(s).
+ */
+static void bc_sent(int status, int num_tx);
+
+/* --- Unicast */
+/**
+ * @brief Unicast receive callback.
+ *
+ * @param header Unicast header.
+ * @param sender Address of the sender node.
+ */
+static void uc_recv(const struct unicast_hdr_t *header,
+                    const linkaddr_t *sender);
+
+/**
+ * @brief Unicast sent callback.
+ *
+ * @param status Status code.
+ * @param num_tx Number of transmission(s).
+ */
+static void uc_sent(int status, int num_tx);
+
 /**
  * @brief Connection callbacks.
  */
 static struct connection_callbacks_t conn_cb = {
-    .bc = {.recv = {.event = event_msg_cb, .beacon = NULL}},
-    .uc = {.recv = {.collect = collect_msg_cb}}};
+    .bc = {.recv = bc_recv, .sent = bc_sent},
+    .uc = {.recv = uc_recv, .sent = uc_sent}};
 
 /* --- --- */
 void etc_open(uint16_t channel, const struct etc_callbacks_t *callbacks) {
@@ -182,6 +218,47 @@ bool etc_trigger(uint32_t value, uint32_t threshold) {
 int etc_command(const linkaddr_t *receiver, enum command_type_t command,
                 uint32_t threshold) {
   /* Prepare and send command */
+}
+
+/* --- CONNECTION --- */
+/* --- Broadcast */
+static void bc_recv(const struct broadcast_hdr_t *header,
+                    const linkaddr_t *sender) {
+  switch (header->type) {
+    case BROADCAST_MSG_TYPE_EVENT: {
+      event_msg_cb(header, sender);
+      break;
+    }
+    default: {
+      /* Ignore */
+      break;
+    }
+  }
+}
+
+static void bc_sent(int status, int num_tx) { /* TODO */
+}
+
+/* --- Unicast */
+static void uc_recv(const struct unicast_hdr_t *header,
+                    const linkaddr_t *sender) {
+  switch (header->type) {
+    case UNICAST_MSG_TYPE_COLLECT: {
+      collect_msg_cb(header, sender);
+      break;
+    }
+    case UNICAST_MSG_TYPE_COMMAND: {
+      command_msg_cb(header, sender);
+      break;
+    }
+    default: {
+      /* Ignore */
+      break;
+    }
+  }
+}
+
+static void uc_sent(int status, int num_tx) { /* TODO */
 }
 
 /* --- EVENT MESSAGE --- */
@@ -284,7 +361,7 @@ static bool send_collect_message(const struct collect_msg_t *collect_msg,
                                  const linkaddr_t *receiver) {
   if (!connection_is_connected()) {
     LOG_WARN(
-        "Unable to send collect message because the node is disconnected: "
+        "Unable to send collect message because node is disconnected: "
         "{ seqn: %u, source: %02x:%02x }",
         collect_msg->event_seqn, collect_msg->event_source.u8[0],
         collect_msg->event_source.u8[1]);

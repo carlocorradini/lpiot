@@ -40,7 +40,7 @@ static void bc_recv_cb(struct broadcast_conn *bc_conn,
  *
  * @param bc_conn Broadcast connection.
  * @param status Status code.
- * @param num_tx Total number of transmission(s).
+ * @param num_tx Number of transmission(s).
  */
 static void bc_sent_cb(struct broadcast_conn *bc_conn, int status, int num_tx);
 
@@ -167,41 +167,26 @@ static void bc_recv_cb(struct broadcast_conn *bc_conn,
     return;
   }
 
-  /* Forward to correct callback */
-  switch (bc_header.type) {
-    case BROADCAST_MSG_TYPE_BEACON: {
-      LOG_DEBUG("Received broadcast message from %02x:%02x of type BEACON",
-                sender->u8[0], sender->u8[1]);
-      beacon_recv_cb(&bc_header, sender);
-      if (cb->bc.recv.beacon != NULL) cb->bc.recv.beacon(&bc_header, sender);
-      break;
-    }
-    case BROADCAST_MSG_TYPE_EVENT: {
-      LOG_DEBUG("Received broadcast message from %02x:%02x of type EVENT",
-                sender->u8[0], sender->u8[1]);
-      if (cb->bc.recv.event != NULL) cb->bc.recv.event(&bc_header, sender);
-      break;
-    }
-    default: {
-      LOG_WARN(
-          "Received broadcast message from %02x:%02x with unknown type: %d",
-          sender->u8[0], sender->u8[1], bc_header.type);
-      break;
-    }
-  }
+  LOG_DEBUG("Received broadcast message from %02x:%02x of type %d",
+            sender->u8[0], sender->u8[1], bc_header.type);
+
+  /* Forward to beacon */
+  if (bc_header.type == BROADCAST_MSG_TYPE_BEACON)
+    beacon_recv_cb(&bc_header, sender);
+
+  /* Forward to callback */
+  if (cb->bc.recv != NULL) cb->bc.recv(&bc_header, sender);
 }
 
 static void bc_sent_cb(struct broadcast_conn *bc_conn, int status, int num_tx) {
-  /* Check status */
-  if (status != MAC_TX_OK) {
-    /* Something bad happended */
-    LOG_ERROR("Error sending broadcast message in tx %d due to %d", num_tx,
-              status);
-    return;
-  }
+  if (status != MAC_TX_OK)
+    LOG_ERROR("Error sending broadcast message on tx %d due to %d", num_tx,
+              status); /* Something bad happended */
+  else
+    LOG_DEBUG("Sent broadcast message"); /* Message sent */
 
-  /* Message sent successfully */
-  LOG_DEBUG("Sent broadcast message");
+  /* Forward to callback */
+  if (cb->bc.sent != NULL) cb->bc.sent(status, num_tx);
 }
 
 /* --- UNICAST --- */
@@ -255,20 +240,11 @@ static void uc_recv_cb(struct unicast_conn *uc_conn, const linkaddr_t *sender) {
     return;
   }
 
-  /* Forward to correct callback */
-  switch (uc_header.type) {
-    case UNICAST_MSG_TYPE_COLLECT: {
-      LOG_DEBUG("Received unicast message from %02x:%02x of type COLLECT",
-                sender->u8[0], sender->u8[1]);
-      if (cb->uc.recv.collect != NULL) cb->uc.recv.collect(&uc_header, sender);
-      break;
-    }
-    default: {
-      LOG_WARN("Received unicast message from %02x:%02x with unknown type: %d",
-               sender->u8[0], sender->u8[1], uc_header.type);
-      break;
-    }
-  }
+  LOG_DEBUG("Received unicast message from %02x:%02x of type %d", sender->u8[0],
+            sender->u8[1], uc_header.type);
+
+  /* Forward to callback */
+  if (cb->uc.recv != NULL) cb->uc.recv(&uc_header, sender);
 }
 
 static void uc_sent_cb(struct unicast_conn *uc_conn, int status, int num_tx) {
@@ -277,21 +253,20 @@ static void uc_sent_cb(struct unicast_conn *uc_conn, int status, int num_tx) {
   /* Current connection  */
   const struct connection_t *conn = connection_get_conn();
 
-  /* Ignore if null address */
+  /* Check if null address */
   if (linkaddr_cmp(receiver, &linkaddr_null)) {
     LOG_WARN("Unicast message sent to NULL address %02x:%02x", receiver->u8[0],
              receiver->u8[1]);
-    return;
+    goto callback;
   }
 
-  /* Check status */
   if (status != MAC_TX_OK) {
     /* Something bad happended */
-    LOG_ERROR("Error sending unicast message to %02x:%02x in tx %d due to %d",
+    LOG_ERROR("Error sending unicast message to %02x:%02x on tx %d due to %d",
               receiver->u8[0], receiver->u8[1], num_tx, status);
 
     /* Ignore backup if receiver is not parent node */
-    if (!linkaddr_cmp(receiver, &conn->parent_node)) return;
+    if (!linkaddr_cmp(receiver, &conn->parent_node)) goto callback;
 
     /* Invalidate current connection */
     LOG_WARN(
@@ -304,7 +279,7 @@ static void uc_sent_cb(struct unicast_conn *uc_conn, int status, int num_tx) {
     /* Check if backup connection is available */
     if (!connection_is_connected()) {
       LOG_WARN("Unavailable backup connection");
-      return;
+      goto callback;
     }
 
     /* New connection */
@@ -314,29 +289,14 @@ static void uc_sent_cb(struct unicast_conn *uc_conn, int status, int num_tx) {
         "hopn: %u, rssi: %d }",
         new_conn->parent_node.u8[0], new_conn->parent_node.u8[1],
         new_conn->seqn, new_conn->hopn, new_conn->rssi);
-
-    /* Retry */
-    linkaddr_t data_receiver;
-    uint8_t data[PACKETBUF_SIZE];
-    uint16_t data_len;
-    struct unicast_hdr_t data_header;
-
-    linkaddr_copy(&data_receiver, receiver);
-    packetbuf_copyto(&data);
-    data_len = packetbuf_datalen();
-    /* FIXME Non funziona */
-    memcpy(&data_header, packetbuf_dataptr() - sizeof(data_header),
-           sizeof(data_header));
-
-    packetbuf_clear();
-    packetbuf_copyfrom(&data, data_len);
-
-    connection_unicast_send(data_header.type, &new_conn->parent_node);
-
-    return;
+  } else {
+    /* Message sent successfully */
+    LOG_DEBUG("Sent unicast message to %02x:%02x", receiver->u8[0],
+              receiver->u8[1]);
   }
 
-  /* Message sent successfully */
-  LOG_DEBUG("Sent unicast message to %02x:%02x", receiver->u8[0],
-            receiver->u8[1]);
+  goto callback;
+
+callback:
+  if (cb->uc.sent != NULL) cb->uc.sent(status, num_tx);
 }

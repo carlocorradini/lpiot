@@ -83,8 +83,8 @@ void simple_energest_step(void) {
   last_tx = curr_tx;
   last_rx = curr_rx;
 
-  LOG_DEBUG("Energest: %u %lu %lu %lu %lu", cnt++, delta_cpu, delta_lpm,
-            delta_tx, delta_rx);
+  LOG_INFO("Energest: %u %lu %lu %lu %lu", cnt++, delta_cpu, delta_lpm,
+           delta_tx, delta_rx);
 }
 
 PROCESS_THREAD(energest_process, ev, data) {
