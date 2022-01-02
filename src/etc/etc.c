@@ -230,11 +230,7 @@ int etc_command(const linkaddr_t *receiver, enum command_type_t command,
 void event_msg_cb(const struct broadcast_hdr_t *header,
                   const linkaddr_t *sender) {
   struct event_msg_t event_msg;
-
-  /* Ignore if suppression is active */
-  if (!ctimer_expired(&suppression_timer_new) ||
-      !ctimer_expired(&suppression_timer_propagation))
-    return;
+  const enum node_role_t node_role = node_get_role();
 
   /* Check received event message validity */
   if (packetbuf_datalen() != sizeof(event_msg)) {
@@ -246,10 +242,23 @@ void event_msg_cb(const struct broadcast_hdr_t *header,
   /* Copy event message */
   packetbuf_copyto(&event_msg);
 
-  /* Ignore if already handling event */
-  if (event_msg.seqn == event.seqn &&
-      linkaddr_cmp(&event_msg.source, &event.source))
-    return;
+  /* Perform checks if node is sensor/actuator or forwarder */
+  if (node_role == NODE_ROLE_SENSOR_ACTUATOR ||
+      node_role == NODE_ROLE_FORWARDER) {
+    /* Ignore if suppression is active */
+    if (!ctimer_expired(&suppression_timer_new) ||
+        !ctimer_expired(&suppression_timer_propagation))
+      return;
+
+    /* Ignore if already handling event */
+    if (event_msg.seqn == event.seqn &&
+        linkaddr_cmp(&event_msg.source, &event.source))
+      return;
+  }
+
+  /* Update event */
+  event.seqn = event_msg.seqn;
+  linkaddr_copy(&event.source, &event_msg.source);
 
   LOG_INFO(
       "Received event message from %02x:%02x: "
@@ -257,21 +266,27 @@ void event_msg_cb(const struct broadcast_hdr_t *header,
       sender->u8[0], sender->u8[1], event_msg.seqn, event_msg.source.u8[0],
       event_msg.source.u8[1]);
 
-  /* Update event */
-  event.seqn = event_msg.seqn;
-  linkaddr_copy(&event.source, &event_msg.source);
+  /* If controller event callback */
+  if (node_role == NODE_ROLE_CONTROLLER) {
+    cb->event_cb(&event.source, event.seqn);
+  }
 
-  /* Start to suppress new event message(s) */
-  ctimer_set(&suppression_timer_propagation, SUPPRESSION_TIMEOUT_PROP, NULL,
-             NULL);
+  /* If node is sensor/actuator or forwarder */
+  if (node_role == NODE_ROLE_SENSOR_ACTUATOR ||
+      node_role == NODE_ROLE_FORWARDER) {
+    /* Start to suppress new event message(s) */
+    ctimer_set(&suppression_timer_propagation, SUPPRESSION_TIMEOUT_PROP, NULL,
+               NULL);
 
-  /* Schedule event message propagation */
-  ctimer_set(&event_timer, ETC_EVENT_FORWARD_DELAY, event_timer_cb, NULL);
+    /* Schedule event message propagation */
+    ctimer_set(&event_timer, ETC_EVENT_FORWARD_DELAY, event_timer_cb, NULL);
 
-  /* Schedule collect message only if sensor/actuator */
-  if (node_get_role() == NODE_ROLE_SENSOR_ACTUATOR) {
-    /* Schedule collect message dispatch */
-    ctimer_set(&collect_timer, ETC_COLLECT_START_DELAY, collect_timer_cb, NULL);
+    /* Schedule collect message only if sensor/actuator */
+    if (node_role == NODE_ROLE_SENSOR_ACTUATOR) {
+      /* Schedule collect message dispatch */
+      ctimer_set(&collect_timer, ETC_COLLECT_START_DELAY, collect_timer_cb,
+                 NULL);
+    }
   }
 }
 

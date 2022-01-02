@@ -13,11 +13,8 @@
 struct etc_callbacks_t {
   /**
    * Event detection callback.
-   * This callback notifies the Controller of an ongoing event dissemination.
+   * Notifies the Controller of an ongoing event dissemination.
    * After this notification, the Controller waits for sensor readings.
-   * The event callback should come with the event_source (the address of the
-   * sensor that generated the event) and the event_seqn (a growing sequence
-   * number).
    *
    * @param event_source Address of the sensor that generated the event.
    * @param event_seqn Event sequence number.
@@ -26,12 +23,12 @@ struct etc_callbacks_t {
 
   /**
    * Data collection reception callback.
-   * The Controller sets this callback to store the readings of all sensors.
+   * Notifies the Controller to store the reading of the Sensor.
    * When all readings have been collected, the Controller can send commands.
    *
    * @param event_source Address of the sensor that generated the event.
    * @param event_seqn Event sequence number.
-   * @param sender Address of the sender node.
+   * @param sender Address of the sensor node.
    * @param value Sensor value.
    * @param threshold Sensor threshold.
    */
@@ -43,7 +40,7 @@ struct etc_callbacks_t {
    * Command reception callback.
    * Notifies the Sensor/Actuator of a command from the Controller.
    *
-   * @param event_source Event source node.
+   * @param event_source Address of the sensor that generated the event.
    * @param event_seqn Event sequence number.
    * @param command Command type.
    * @param threshold New threshold.
