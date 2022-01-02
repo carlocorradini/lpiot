@@ -9,30 +9,42 @@
  * @brief Event message.
  */
 struct event_msg_t {
-  /* Address of the sensor that generated the event. */
-  linkaddr_t source;
   /* Event sequence number. */
   uint16_t seqn;
+  /* Address of the sensor that generated the event. */
+  linkaddr_t source;
 } __attribute__((packed));
 
 /**
- * @brief Header structure for data packets.
+ * @brief Collect message.
  */
 struct collect_msg_t {
-  /* Address of the sensor that generated the event. */
-  linkaddr_t event_source;
   /* Event sequence number. */
   uint16_t event_seqn;
+  /* Address of the sensor that generated the event. */
+  linkaddr_t event_source;
+  /* Address of sender sensor node. */
+  linkaddr_t sender;
+  /* Node value. */
+  uint32_t value;
+  /* Node threshold. */
+  uint32_t threshold;
 } __attribute__((packed));
 
 /**
- * @brief Header structure for command packets.
+ * @brief Command message.
  */
 struct command_msg_t {
-  /* Address of the sensor that generated the event. */
-  linkaddr_t event_source;
   /* Event sequence number. */
   uint16_t event_seqn;
+  /* Address of the sensor that generated the event. */
+  linkaddr_t event_source;
+  /* Adress of receiver actuator node. */
+  linkaddr_t receiver;
+  /* Command type. */
+  enum command_type_t command;
+  /* New threshold. */
+  uint32_t threshold;
 } __attribute__((packed));
 
 /**
