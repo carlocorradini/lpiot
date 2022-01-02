@@ -118,6 +118,16 @@ static void collect_timer_cb(void *ignored);
 static bool send_collect_message(const struct collect_msg_t *collect_msg,
                                  const linkaddr_t *receiver);
 
+/* --- COMMAND MESSAGE--- */
+/**
+ * @brief Command message receive callback.
+ *
+ * @param header Unicast header.
+ * @param sender Address of the sender node.
+ */
+static void command_msg_cb(const struct unicast_hdr_t *header,
+                           const linkaddr_t *sender);
+
 /* --- CONNECTION --- */
 /* --- Broadcast */
 /**
@@ -386,3 +396,7 @@ static bool send_collect_message(const struct collect_msg_t *collect_msg,
 }
 
 /* --- COMMAND MESSAGE --- */
+static void command_msg_cb(const struct unicast_hdr_t *header,
+                           const linkaddr_t *sender) {
+  /* TODO */
+}
