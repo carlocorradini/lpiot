@@ -28,23 +28,6 @@ static sensor_reading_t sensor_readings[NUM_SENSORS];
 static uint8_t num_sensor_readings;
 
 /**
- * @brief Data collection reception callback.
- * The controller sets this callback to store the readings of all sensors.
- * When all readings have been collected, the controller can send commands.
- * You may send commands earlier if some data is missing after a timeout,
- * running actuation logic on the acquired data.
- *
- * @param event_source Address of the sensor that generated the event.
- * @param event_seqn Event sequence number.
- * @param source Address of the source sensor.
- * @param value Sensor's value.
- * @param threshold Sensor's threshold.
- */
-static void receive_cb(const linkaddr_t *event_source, uint16_t event_seqn,
-                       const linkaddr_t *source, uint32_t value,
-                       uint32_t threshold);
-
-/**
  * @brief Event detection callback.
  * This callback notifies the controller of an ongoing event dissemination.
  * After this notification, the controller waits for sensor readings.
@@ -59,6 +42,23 @@ static void receive_cb(const linkaddr_t *event_source, uint16_t event_seqn,
  * @param event_seqn Event sequence number.
  */
 static void event_cb(const linkaddr_t *event_source, uint16_t event_seqn);
+
+/**
+ * @brief Data collection reception callback.
+ * The controller sets this callback to store the readings of all sensors.
+ * When all readings have been collected, the controller can send commands.
+ * You may send commands earlier if some data is missing after a timeout,
+ * running actuation logic on the acquired data.
+ *
+ * @param event_source Address of the sensor that generated the event.
+ * @param event_seqn Event sequence number.
+ * @param source Address of the source sensor.
+ * @param value Sensor's value.
+ * @param threshold Sensor's threshold.
+ */
+static void collect_cb(const linkaddr_t *event_source, uint16_t event_seqn,
+                       const linkaddr_t *source, uint32_t value,
+                       uint32_t threshold);
 
 /**
  * @brief Actuation logic.
@@ -82,7 +82,7 @@ static void actuation_commands(void);
  * @brief Callbacks.
  */
 static const struct etc_callbacks_t cb = {
-    .receive_cb = receive_cb, .event_cb = event_cb, .command_cb = NULL};
+    .event_cb = event_cb, .collect_cb = collect_cb, .command_cb = NULL};
 
 void controller_init(void) {
   /* Sensor readings structure */
@@ -98,7 +98,19 @@ void controller_init(void) {
   etc_open(CONNECTION_CHANNEL, &cb);
 }
 
-static void receive_cb(const linkaddr_t *event_source, uint16_t event_seqn,
+static void event_cb(const linkaddr_t *event_source, uint16_t event_seqn) {
+  /* Check if the event is old and discard it in that case;
+   * otherwise, update the current event being handled */
+
+  /* Logging */
+  const struct etc_event_t *event = etc_get_current_event();
+  LOG_INFO("EVENT [%02x:%02x, %u]", event->source.u8[0], event->source.u8[1],
+           event->seqn);
+
+  /* Wait for sensor readings */
+}
+
+static void collect_cb(const linkaddr_t *event_source, uint16_t event_seqn,
                        const linkaddr_t *source, uint32_t value,
                        uint32_t threshold) {
   /* What if controller has not seen the event message for this collection?
@@ -119,18 +131,6 @@ static void receive_cb(const linkaddr_t *event_source, uint16_t event_seqn,
            value, threshold);
 
   /* If all data was collected, call actuation logic */
-}
-
-static void event_cb(const linkaddr_t *event_source, uint16_t event_seqn) {
-  /* Check if the event is old and discard it in that case;
-   * otherwise, update the current event being handled */
-
-  /* Logging */
-  const struct etc_event_t *event = etc_get_current_event();
-  LOG_INFO("EVENT [%02x:%02x, %u]", event->source.u8[0], event->source.u8[1],
-           event->seqn);
-
-  /* Wait for sensor readings */
 }
 
 /**

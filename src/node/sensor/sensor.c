@@ -43,7 +43,7 @@ static void command_cb(const linkaddr_t *event_source, uint16_t event_seqn,
  * @brief Callbacks.
  */
 static const struct etc_callbacks_t etc_cb = {
-    .receive_cb = NULL, .event_cb = NULL, .command_cb = command_cb};
+    .event_cb = NULL, .collect_cb = NULL, .command_cb = command_cb};
 
 void sensor_init(size_t index) {
   value = SENSOR_INITIAL_VALUE * index;
