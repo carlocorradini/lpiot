@@ -287,9 +287,9 @@ void event_msg_cb(const struct broadcast_hdr_t *header,
       sender->u8[0], sender->u8[1], event_msg.seqn, event_msg.source.u8[0],
       event_msg.source.u8[1]);
 
-  /* If controller event callback */
+  /* If controller forward to event callback */
   if (node_role == NODE_ROLE_CONTROLLER) {
-    cb->event_cb(&event.source, event.seqn);
+    cb->event_cb(event.seqn, &event.source);
   }
 
   /* If node is sensor/actuator or forwarder */
@@ -340,9 +340,56 @@ static bool send_event_message(const struct event_msg_t *event_msg) {
 /* --- COLLECT MESSAGE--- */
 static void collect_msg_cb(const struct unicast_hdr_t *header,
                            const linkaddr_t *sender) {
-  /*TODO*/
-  LOG_FATAL("HEYYYYYYYYYYYY BOYYYYYYYYYY from %02x:%02x", sender->u8[0],
-            sender->u8[1]);
+  struct collect_msg_t collect_msg;
+
+  /* Check received collect message validity */
+  if (packetbuf_datalen() != sizeof(collect_msg)) {
+    LOG_ERROR("Received collect message wrong size: %u byte",
+              packetbuf_datalen());
+    return;
+  }
+
+  /* Copy collect message */
+  packetbuf_copyto(&collect_msg);
+
+  LOG_INFO(
+      "Received collect message from %02x:%02x: "
+      "{ event_seqn: %u, event_source: %02x:%02x, "
+      "sender: %02x:%02x, value: %u, threshold: %u}",
+      sender->u8[0], sender->u8[1], collect_msg.event_seqn,
+      collect_msg.event_source.u8[0], collect_msg.event_source.u8[1],
+      collect_msg.sender.u8[0], collect_msg.sender.u8[1], collect_msg.value,
+      collect_msg.threshold);
+
+  /* Forward based on node role */
+  switch (node_get_role()) {
+    case NODE_ROLE_SENSOR_ACTUATOR:
+    case NODE_ROLE_FORWARDER: {
+      /* Check connection */
+      if (!connection_is_connected()) {
+        LOG_WARN(
+            "Unable to forward collect message because the node is "
+            "disconnected");
+        return;
+      }
+
+      /* Forward collect message to parent node */
+      connection_unicast_send(header->type,
+                              &connection_get_conn()->parent_node);
+
+      break;
+    }
+    case NODE_ROLE_CONTROLLER: {
+      /* Forward to collect callback */
+      cb->collect_cb(collect_msg.event_seqn, &collect_msg.event_source,
+                     &collect_msg.sender, collect_msg.value,
+                     collect_msg.threshold);
+      break;
+    }
+    default:
+      /* Ignore */
+      break;
+  }
 }
 
 static void collect_timer_cb(void *ignored) {

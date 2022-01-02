@@ -38,10 +38,10 @@ static uint8_t num_sensor_readings;
  * matched with data collection logging to count how many packets,
  * associated to this event, were received.
  *
- * @param event_source Address of the sensor that generated the event.
  * @param event_seqn Event sequence number.
+ * @param event_source Address of the sensor that generated the event.
  */
-static void event_cb(const linkaddr_t *event_source, uint16_t event_seqn);
+static void event_cb(uint16_t event_seqn, const linkaddr_t *event_source);
 
 /**
  * @brief Data collection reception callback.
@@ -50,13 +50,13 @@ static void event_cb(const linkaddr_t *event_source, uint16_t event_seqn);
  * You may send commands earlier if some data is missing after a timeout,
  * running actuation logic on the acquired data.
  *
- * @param event_source Address of the sensor that generated the event.
  * @param event_seqn Event sequence number.
+ * @param event_source Address of the sensor that generated the event.
  * @param source Address of the source sensor.
  * @param value Sensor's value.
  * @param threshold Sensor's threshold.
  */
-static void collect_cb(const linkaddr_t *event_source, uint16_t event_seqn,
+static void collect_cb(uint16_t event_seqn, const linkaddr_t *event_source,
                        const linkaddr_t *source, uint32_t value,
                        uint32_t threshold);
 
@@ -98,7 +98,7 @@ void controller_init(void) {
   etc_open(CONNECTION_CHANNEL, &cb);
 }
 
-static void event_cb(const linkaddr_t *event_source, uint16_t event_seqn) {
+static void event_cb(uint16_t event_seqn, const linkaddr_t *event_source) {
   /* Check if the event is old and discard it in that case;
    * otherwise, update the current event being handled */
 
@@ -110,7 +110,7 @@ static void event_cb(const linkaddr_t *event_source, uint16_t event_seqn) {
   /* Wait for sensor readings */
 }
 
-static void collect_cb(const linkaddr_t *event_source, uint16_t event_seqn,
+static void collect_cb(uint16_t event_seqn, const linkaddr_t *event_source,
                        const linkaddr_t *source, uint32_t value,
                        uint32_t threshold) {
   /* What if controller has not seen the event message for this collection?

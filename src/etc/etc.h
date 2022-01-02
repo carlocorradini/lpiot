@@ -16,23 +16,23 @@ struct etc_callbacks_t {
    * Notifies the Controller of an ongoing event dissemination.
    * After this notification, the Controller waits for sensor readings.
    *
-   * @param event_source Address of the sensor that generated the event.
    * @param event_seqn Event sequence number.
+   * @param event_source Address of the sensor that generated the event.
    */
-  void (*event_cb)(const linkaddr_t *event_source, uint16_t event_seqn);
+  void (*event_cb)(uint16_t event_seqn, const linkaddr_t *event_source);
 
   /**
    * Data collection reception callback.
    * Notifies the Controller to store the reading of the Sensor.
    * When all readings have been collected, the Controller can send commands.
    *
-   * @param event_source Address of the sensor that generated the event.
    * @param event_seqn Event sequence number.
+   * @param event_source Address of the sensor that generated the event.
    * @param sender Address of the sensor node.
    * @param value Sensor value.
    * @param threshold Sensor threshold.
    */
-  void (*collect_cb)(const linkaddr_t *event_source, uint16_t event_seqn,
+  void (*collect_cb)(uint16_t event_seqn, const linkaddr_t *event_source,
                      const linkaddr_t *sender, uint32_t value,
                      uint32_t threshold);
 
@@ -40,12 +40,12 @@ struct etc_callbacks_t {
    * Command reception callback.
    * Notifies the Sensor/Actuator of a command from the Controller.
    *
-   * @param event_source Address of the sensor that generated the event.
    * @param event_seqn Event sequence number.
+   * @param event_source Address of the sensor that generated the event.
    * @param command Command type.
    * @param threshold New threshold.
    */
-  void (*command_cb)(const linkaddr_t *event_source, uint16_t event_seqn,
+  void (*command_cb)(uint16_t event_seqn, const linkaddr_t *event_source,
                      enum command_type_t command, uint32_t threshold);
 };
 

@@ -31,12 +31,12 @@ static void sensor_timer_cb(void *ignored);
  * @brief Command reception callback.
  * Notifies the sensor/actuator of a command from the controller.
  *
- * @param event_source Event source node.
  * @param event_seqn Event sequence number.
+ * @param event_source Event source node.
  * @param command Command type.
  * @param threshold New threshold.
  */
-static void command_cb(const linkaddr_t *event_source, uint16_t event_seqn,
+static void command_cb(uint16_t event_seqn, const linkaddr_t *event_source,
                        enum command_type_t command, uint32_t threshold);
 
 /**
@@ -83,7 +83,7 @@ static void sensor_timer_cb(void *ignored) {
   ctimer_set(&sensor_timer, SENSOR_UPDATE_INTERVAL, sensor_timer_cb, NULL);
 }
 
-static void command_cb(const linkaddr_t *event_source, uint16_t event_seqn,
+static void command_cb(uint16_t event_seqn, const linkaddr_t *event_source,
                        enum command_type_t command, uint32_t threshold) {
   LOG_INFO("Actuation [%02x:%02x, %u] %02x:%02x", event_source->u8[0],
            event_source->u8[1], event_seqn, linkaddr_node_addr.u8[0],
