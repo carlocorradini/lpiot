@@ -268,8 +268,10 @@ void event_msg_cb(const struct broadcast_hdr_t *header,
       node_role == NODE_ROLE_FORWARDER) {
     /* Ignore if suppression is active */
     if (!ctimer_expired(&suppression_timer_new) ||
-        !ctimer_expired(&suppression_timer_propagation))
+        !ctimer_expired(&suppression_timer_propagation)) {
+      LOG_WARN("Event message propagation is suppressed");
       return;
+    }
 
     /* Ignore if already handling event */
     if (event_msg.seqn == event.seqn &&
