@@ -246,7 +246,7 @@ void event_msg_cb(const struct broadcast_hdr_t *header,
   /* Copy event message */
   packetbuf_copyto(&event_msg);
 
-  /* Ignore if same event, already handling it */
+  /* Ignore if already handling event */
   if (event_msg.seqn == event.seqn &&
       linkaddr_cmp(&event_msg.source, &event.source))
     return;
