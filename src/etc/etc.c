@@ -403,6 +403,14 @@ static void collect_timer_cb(void *ignored) {
 
 static bool send_collect_message(const struct collect_msg_t *collect_msg,
                                  const linkaddr_t *receiver) {
+  /* Check connection */
+  if (!connection_is_connected()) {
+    LOG_WARN(
+        "Unable to forward collect message because the node is "
+        "disconnected");
+    return;
+  }
+
   /* Prepare packetbuf */
   packetbuf_clear();
   packetbuf_copyfrom(collect_msg, sizeof(struct collect_msg_t));
@@ -410,13 +418,24 @@ static bool send_collect_message(const struct collect_msg_t *collect_msg,
   /* Send collect message in unicast to receiver node */
   const bool ret = connection_unicast_send(UNICAST_MSG_TYPE_COLLECT, receiver);
   if (!ret)
-    LOG_ERROR("Error sending collect message: %d", ret);
+    LOG_ERROR(
+        "Error sending collect message to %02x:%02x: "
+        "{ event_seqn: %u, event_source: %02x:%02x, "
+        "sender: %02x:%02x, value: %u, threshold: %u}",
+        receiver->u8[0], receiver->u8[1], collect_msg->event_seqn,
+        collect_msg->event_source.u8[0], collect_msg->event_source.u8[1],
+        collect_msg->sender.u8[0], collect_msg->sender.u8[1],
+        collect_msg->value, collect_msg->threshold);
   else {
     sending_collect_msg = true;
     LOG_INFO(
-        "Sending collect message to %02x:%02x: { seqn: %u, source: %02x:%02x }",
+        "Error sending collect message to %02x:%02x: "
+        "{ event_seqn: %u, event_source: %02x:%02x, "
+        "sender: %02x:%02x, value: %u, threshold: %u}",
         receiver->u8[0], receiver->u8[1], collect_msg->event_seqn,
-        collect_msg->event_source.u8[0], collect_msg->event_source.u8[1]);
+        collect_msg->event_source.u8[0], collect_msg->event_source.u8[1],
+        collect_msg->sender.u8[0], collect_msg->sender.u8[1],
+        collect_msg->value, collect_msg->threshold);
   }
 
   return ret;
