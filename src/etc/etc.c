@@ -282,6 +282,15 @@ static void collect_timer_cb(void *ignored) {
 
 static bool send_collect_message(const struct collect_msg_t *collect_msg,
                                  const linkaddr_t *receiver) {
+  if (!connection_is_connected()) {
+    LOG_WARN(
+        "Unable to send collect message because the node is disconnected: "
+        "{ seqn: %u, source: %02x:%02x }",
+        collect_msg->event_seqn, collect_msg->event_source.u8[0],
+        collect_msg->event_source.u8[1]);
+    return false;
+  }
+
   /* Prepare packetbuf */
   packetbuf_clear();
   packetbuf_copyfrom(collect_msg, sizeof(struct collect_msg_t));
