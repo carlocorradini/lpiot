@@ -226,64 +226,6 @@ int etc_command(const linkaddr_t *receiver, enum command_type_t command,
   /* Prepare and send command */
 }
 
-/* --- CONNECTION --- */
-/* --- Broadcast */
-static void bc_recv(const struct broadcast_hdr_t *header,
-                    const linkaddr_t *sender) {
-  switch (header->type) {
-    case BROADCAST_MSG_TYPE_EVENT: {
-      event_msg_cb(header, sender);
-      break;
-    }
-    default: {
-      /* Ignore */
-      break;
-    }
-  }
-}
-
-/* --- Unicast */
-static void uc_recv(const struct unicast_hdr_t *header,
-                    const linkaddr_t *sender) {
-  switch (header->type) {
-    case UNICAST_MSG_TYPE_COLLECT: {
-      collect_msg_cb(header, sender);
-      break;
-    }
-    case UNICAST_MSG_TYPE_COMMAND: {
-      command_msg_cb(header, sender);
-      break;
-    }
-    default: {
-      /* Ignore */
-      break;
-    }
-  }
-}
-
-static void uc_sent(int status, int num_tx) {
-  if (status != MAC_TX_OK) {
-    /* Something bad happended */
-
-    /* Collect message */
-    if (sending_collect_msg) {
-      LOG_ERROR("Error sending collect message on tx %d due to %d", num_tx,
-                status);
-      sending_collect_msg = false;
-      /* Retry */
-      collect_timer_cb(NULL);
-    }
-
-    return;
-  }
-
-  /* Message sent */
-  if (sending_collect_msg) {
-    sending_collect_msg = false;
-    LOG_DEBUG("Sent collect message");
-  }
-}
-
 /* --- EVENT MESSAGE --- */
 void event_msg_cb(const struct broadcast_hdr_t *header,
                   const linkaddr_t *sender) {
@@ -414,4 +356,62 @@ static bool send_collect_message(const struct collect_msg_t *collect_msg,
 static void command_msg_cb(const struct unicast_hdr_t *header,
                            const linkaddr_t *sender) {
   /* TODO */
+}
+
+/* --- CONNECTION --- */
+/* --- Broadcast */
+static void bc_recv(const struct broadcast_hdr_t *header,
+                    const linkaddr_t *sender) {
+  switch (header->type) {
+    case BROADCAST_MSG_TYPE_EVENT: {
+      event_msg_cb(header, sender);
+      break;
+    }
+    default: {
+      /* Ignore */
+      break;
+    }
+  }
+}
+
+/* --- Unicast */
+static void uc_recv(const struct unicast_hdr_t *header,
+                    const linkaddr_t *sender) {
+  switch (header->type) {
+    case UNICAST_MSG_TYPE_COLLECT: {
+      collect_msg_cb(header, sender);
+      break;
+    }
+    case UNICAST_MSG_TYPE_COMMAND: {
+      command_msg_cb(header, sender);
+      break;
+    }
+    default: {
+      /* Ignore */
+      break;
+    }
+  }
+}
+
+static void uc_sent(int status, int num_tx) {
+  if (status != MAC_TX_OK) {
+    /* Something bad happended */
+
+    /* Collect message */
+    if (sending_collect_msg) {
+      LOG_ERROR("Error sending collect message on tx %d due to %d", num_tx,
+                status);
+      sending_collect_msg = false;
+      /* Retry */
+      collect_timer_cb(NULL);
+    }
+
+    return;
+  }
+
+  /* Message sent */
+  if (sending_collect_msg) {
+    sending_collect_msg = false;
+    LOG_DEBUG("Sent collect message");
+  }
 }
