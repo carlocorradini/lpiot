@@ -110,9 +110,10 @@ bool connection_is_connected(void);
 
 /**
  * @brief Return the established connection.
- * Return NULL if disconnected.
+ * Note that the returned connection could not be valid.
+ * Always check connection_is_connected() before using connection.
  *
- * @return Established connection, NULL otherwise.
+ * @return Established connection.
  */
 const struct connection_t *connection_get_conn(void);
 

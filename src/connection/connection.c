@@ -110,12 +110,12 @@ void connection_close(void) {
   beacon_terminate();
 }
 
-bool connection_is_connected(void) { return connection_get_conn() != NULL; }
+bool connection_is_connected(void) {
+  return !linkaddr_cmp(&connection_get_conn()->parent_node, &linkaddr_null);
+}
 
 const struct connection_t *connection_get_conn(void) {
-  const struct connection_t *conn = beacon_get_conn();
-  if (linkaddr_cmp(&conn->parent_node, &linkaddr_null)) return NULL;
-  return conn;
+  return beacon_get_conn();
 }
 
 /* --- BROADCAST --- */
