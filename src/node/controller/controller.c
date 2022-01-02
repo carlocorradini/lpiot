@@ -7,20 +7,26 @@
 /**
  * @brief Sensor reading.
  */
-typedef struct {
-  linkaddr_t addr;
+struct sensor_reading_t {
+  /* Address of the sensor/actuator node. */
+  linkaddr_t address;
+  /* Event sequence number. */
   uint16_t seqn;
-  bool reading_available;
+  /* Sensor value. */
   uint32_t value;
+  /* Sensor threshold. */
   uint32_t threshold;
+  /* Flag if data is available. */
+  bool reading_available;
+  /* Command to send. */
   enum command_type_t command;
-} sensor_reading_t;
+};
 
 /**
  * @brief Sensor readings.
  * Save the last reading of i th sensor.
  */
-static sensor_reading_t sensor_readings[NUM_SENSORS];
+static struct sensor_reading_t sensor_readings[NUM_SENSORS];
 
 /**
  * @brief Total number of readings from sensors.
@@ -29,32 +35,49 @@ static uint8_t num_sensor_readings;
 
 /**
  * @brief Event detection callback.
- * This callback notifies the controller of an ongoing event dissemination.
+ * Notifies of an ongoing event dissemination.
  * After this notification, the controller waits for sensor readings.
- * The event callback should come with the event_source (the address of the
- * sensor that generated the event) and the event_seqn (a growing sequence
- * number).
- * The logging, reporting source and sequence number, can be
- * matched with data collection logging to count how many packets,
- * associated to this event, were received.
  *
  * @param event_seqn Event sequence number.
  * @param event_source Address of the sensor that generated the event.
  */
 static void event_cb(uint16_t event_seqn, const linkaddr_t *event_source);
 
+/* FXIME */
 /**
  * @brief Data collection reception callback.
- * The controller sets this callback to store the readings of all sensors.
+ * Store the readings of all sensors.
  * When all readings have been collected, the controller can send commands.
+ * TODO
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
  * You may send commands earlier if some data is missing after a timeout,
  * running actuation logic on the acquired data.
  *
  * @param event_seqn Event sequence number.
  * @param event_source Address of the sensor that generated the event.
  * @param source Address of the source sensor.
- * @param value Sensor's value.
- * @param threshold Sensor's threshold.
+ * @param value Sensor value.
+ * @param threshold Sensor threshold.
  */
 static void collect_cb(uint16_t event_seqn, const linkaddr_t *event_source,
                        const linkaddr_t *source, uint32_t value,
@@ -85,12 +108,15 @@ static const struct etc_callbacks_t cb = {
     .event_cb = event_cb, .collect_cb = collect_cb, .command_cb = NULL};
 
 void controller_init(void) {
-  /* Sensor readings structure */
   size_t i;
+
+  /* Initialize sensor readings structure */
   for (i = 0; i < NUM_SENSORS; ++i) {
-    linkaddr_copy(&sensor_readings[i].addr, &SENSORS[i]);
-    sensor_readings[i].reading_available = false;
+    linkaddr_copy(&sensor_readings[i].address, &SENSORS[i]);
+    sensor_readings[i].seqn = 0;
     sensor_readings[i].threshold = CONTROLLER_MAX_DIFF;
+    sensor_readings[i].reading_available = false;
+    sensor_readings[i].command = COMMAND_TYPE_NONE;
   }
   num_sensor_readings = 0;
 
@@ -99,15 +125,35 @@ void controller_init(void) {
 }
 
 static void event_cb(uint16_t event_seqn, const linkaddr_t *event_source) {
-  /* Check if the event is old and discard it in that case;
-   * otherwise, update the current event being handled */
+  struct sensor_reading_t *sensor_reading;
+  size_t i;
 
-  /* Logging */
-  const struct etc_event_t *event = etc_get_current_event();
-  LOG_INFO("EVENT [%02x:%02x, %u]", event->source.u8[0], event->source.u8[1],
-           event->seqn);
+  /* Find sensor reading */
+  for (i = 0; i < NUM_SENSORS; ++i) {
+    sensor_reading = &sensor_readings[i];
+    if (linkaddr_cmp(event_source, &sensor_reading->address)) break; /* Found */
+  }
 
-  /* Wait for sensor readings */
+  /* Check if event source is known */
+  if (i >= NUM_SENSORS) {
+    LOG_WARN("Event has unknown event source: %02x:%02x", event_source->u8[0],
+             event_source->u8[1]);
+    return;
+  }
+
+  LOG_INFO(
+      "Received event: "
+      "{ seqn: %u, source: %02x:%02x}",
+      event_seqn, event_source->u8[0], event_source->u8[1]);
+
+  /* Check if event is old */
+  if (event_seqn != 0 && event_seqn <= sensor_reading->seqn) {
+    LOG_WARN("Discarding event because last reading of seqn %u >= %u received",
+             sensor_reading->seqn, event_seqn);
+    return;
+  }
+
+  /* TODO Wait for sensor readings with timer */
 }
 
 static void collect_cb(uint16_t event_seqn, const linkaddr_t *event_source,
@@ -152,7 +198,8 @@ static void actuation_logic(void) {
   for (i = 0; i < NUM_SENSORS; i++) {
     if (!sensor_readings[i].reading_available) {
       LOG_INFO("Controller: Missing %02x:%02x data",
-               sensor_readings[i].addr.u8[0], sensor_readings[i].addr.u8[1]);
+               sensor_readings[i].address.u8[0],
+               sensor_readings[i].address.u8[1]);
     }
   }
 
@@ -195,8 +242,9 @@ static void actuation_logic(void) {
           sensor_readings[i].threshold = CONTROLLER_MAX_DIFF;
 
           LOG_INFO("Controller: Reset %02x:%02x (%lu, %lu)",
-                   sensor_readings[i].addr.u8[0], sensor_readings[i].addr.u8[1],
-                   sensor_readings[i].value, sensor_readings[i].threshold);
+                   sensor_readings[i].address.u8[0],
+                   sensor_readings[i].address.u8[1], sensor_readings[i].value,
+                   sensor_readings[i].threshold);
 
           /* A value was changed, restart values check */
           restart_check = true;
@@ -205,8 +253,9 @@ static void actuation_logic(void) {
           sensor_readings[i].threshold += value_min;
 
           LOG_INFO("Controller: Update threshold %02x:%02x (%lu, %lu)",
-                   sensor_readings[i].addr.u8[0], sensor_readings[i].addr.u8[1],
-                   sensor_readings[i].value, sensor_readings[i].threshold);
+                   sensor_readings[i].address.u8[0],
+                   sensor_readings[i].address.u8[1], sensor_readings[i].value,
+                   sensor_readings[i].threshold);
 
           /* A value was changed, restart values check */
           restart_check = true;
@@ -227,14 +276,15 @@ static void actuation_commands(void) {
   int i;
   for (i = 0; i < NUM_SENSORS; i++) {
     if (sensor_readings[i].command != COMMAND_TYPE_NONE) {
-      etc_command(&sensor_readings[i].addr, sensor_readings[i].command,
+      etc_command(&sensor_readings[i].address, sensor_readings[i].command,
                   sensor_readings[i].threshold);
 
       /* Logging (based on the current event, expressed by source seqn) */
       const struct etc_event_t *event = etc_get_current_event();
       LOG_INFO("COMMAND [%02x:%02x, %u] %02x:%02x", event->source.u8[0],
-               event->source.u8[1], event->seqn, sensor_readings[i].addr.u8[0],
-               sensor_readings[i].addr.u8[1]);
+               event->source.u8[1], event->seqn,
+               sensor_readings[i].address.u8[0],
+               sensor_readings[i].address.u8[1]);
     }
   }
 }
