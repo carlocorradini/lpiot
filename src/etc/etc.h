@@ -81,6 +81,14 @@ void etc_close(void);
 const struct etc_event_t *etc_get_current_event(void);
 
 /**
+ * @brief Update sensor data.
+ *
+ * @param value Sensor value.
+ * @param threshold Sensor threshold.
+ */
+void etc_update(uint32_t value, uint32_t threshold);
+
+/**
  * @brief Start event dissemination.
  * If events are suppressed no dissemination to avoid contention.
  * Used only by Sensor node.

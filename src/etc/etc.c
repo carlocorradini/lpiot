@@ -47,6 +47,12 @@ struct command_msg_t {
   uint32_t threshold;
 } __attribute__((packed));
 
+/* Sensor value. */
+static uint32_t sensor_value;
+
+/* Sensor threshold. */
+static uint32_t sensor_threshold;
+
 /**
  * @brief ETC callback(s) to interact with the node.
  */
@@ -204,6 +210,12 @@ void etc_close(void) {
 
 const struct etc_event_t *etc_get_current_event(void) { return &event; }
 
+void etc_update(uint32_t value, uint32_t threshold) {
+  /* Update sensor data */
+  sensor_value = value;
+  sensor_threshold = threshold;
+}
+
 bool etc_trigger(uint32_t value, uint32_t threshold) {
   /* Ignore if suppression is active */
   if (!ctimer_expired(&suppression_timer_new) ||
@@ -213,11 +225,6 @@ bool etc_trigger(uint32_t value, uint32_t threshold) {
   /* Update event */
   event.seqn += (event.seqn == 0 ? 0 : 1);
   linkaddr_copy(&event.source, &linkaddr_node_addr);
-
-  /* Prepare event message */
-  struct event_msg_t event_msg;
-  event_msg.seqn = event.seqn;
-  linkaddr_copy(&event_msg.source, &event.source);
 
   /* Start to suppress new trigger(s) */
   ctimer_set(&suppression_timer_new, SUPPRESSION_TIMEOUT_NEW, NULL, NULL);
@@ -229,8 +236,10 @@ bool etc_trigger(uint32_t value, uint32_t threshold) {
   /* Schedule collect message dispatch */
   ctimer_set(&collect_timer, ETC_COLLECT_START_DELAY, collect_timer_cb, NULL);
 
-  /* Send event message */
-  return send_event_message(&event_msg);
+  /* Trigger event timer manually */
+  event_timer_cb(NULL);
+
+  return true;
 }
 
 int etc_command(const linkaddr_t *receiver, enum command_type_t command,
@@ -341,6 +350,9 @@ static void collect_timer_cb(void *ignored) {
   struct collect_msg_t collect_msg;
   collect_msg.event_seqn = event.seqn;
   linkaddr_copy(&collect_msg.event_source, &event.source);
+  linkaddr_copy(&collect_msg.sender, &linkaddr_node_addr);
+  collect_msg.value = sensor_value;
+  collect_msg.threshold = sensor_threshold;
 
   /* Send collect message */
   send_collect_message(&collect_msg, &connection_get_conn()->parent_node);

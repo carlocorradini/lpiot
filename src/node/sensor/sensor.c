@@ -56,19 +56,23 @@ void sensor_init(size_t index) {
   etc_open(CONNECTION_CHANNEL, &etc_cb);
 }
 
-uint32_t sensor_get_value(void) { return value; }
-
-uint32_t sensor_get_threshold(void) { return threshold; }
-
 static void sensor_timer_cb(void *ignored) {
   /* Increase sensor value */
   value += SENSOR_UPDATE_INCREMENT;
+
+  /* Update ETC sensor data */
+  etc_update(value, threshold);
+
   LOG_INFO("Reading { value: %lu, threshold: %lu }", value, threshold);
 
   /* Check threshold */
   if (value > threshold) {
-    int ret = etc_trigger(value, threshold);
-    if (ret) {
+    /* Trigger */
+    if (!etc_trigger(value, threshold)) {
+      /* Fail */
+      LOG_WARN("Trigger is suppressed");
+    } else {
+      /* Success */
       const struct etc_event_t *event = etc_get_current_event();
       LOG_INFO("Trigger [%02x:%02x, %u]", event->source.u8[0],
                event->source.u8[1], event->seqn);
