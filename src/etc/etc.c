@@ -699,8 +699,7 @@ static void uc_sent(int status, int num_tx) {
     /* Collect message */
     if (!linkaddr_cmp(&last_sent_collect_message.sender, &linkaddr_null)) {
       /* Last is a collect message */
-      LOG_ERROR("Retrying sending last collect message due to error %d",
-                status);
+      LOG_WARN("Retrying sending last collect message due to error %d", status);
       /* Retry */
       send_collect_message(&last_sent_collect_message,
                            &connection_get_conn()->parent_node);
