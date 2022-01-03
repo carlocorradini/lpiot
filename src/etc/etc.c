@@ -70,11 +70,13 @@ static uint32_t sensor_value;
 /* Sensor threshold. */
 static uint32_t sensor_threshold;
 
+/* Sensor event seqn */
+static uint32_t sensor_event_seqn;
+
 /**
  * @brief ETC callback(s) to interact with the node.
  */
 static const struct etc_callbacks_t *cb;
-
 /**
  * @brief Current event.
  */
@@ -219,6 +221,7 @@ void etc_open(uint16_t channel, const struct etc_callbacks_t *callbacks) {
   cb = callbacks;
 
   /* Initialize event */
+  sensor_event_seqn = 0;
   event.seqn = 0;
   linkaddr_copy(&event.source, &linkaddr_null);
 
@@ -262,7 +265,8 @@ bool etc_trigger(uint32_t value, uint32_t threshold) {
     return false;
 
   /* Update event */
-  event.seqn += 1;
+  sensor_event_seqn += 1;
+  event.seqn = sensor_event_seqn;
   linkaddr_copy(&event.source, &linkaddr_node_addr);
 
   /* Start to suppress new event(s) */
