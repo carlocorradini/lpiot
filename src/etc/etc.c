@@ -163,9 +163,10 @@ static void collect_timer_cb(void *ignored);
 static bool send_collect_message(const struct collect_msg_t *collect_msg,
                                  const linkaddr_t *receiver);
 
-/* Flag if sending collect message sending */
-/* FIXME */
-static bool sending_collect_msg = false;
+/**
+ * @brief Last sent collect message.
+ */
+static struct collect_msg_t last_sent_collect_message;
 
 /* --- COMMAND MESSAGE--- */
 /**
@@ -513,6 +514,14 @@ static bool send_collect_message(const struct collect_msg_t *collect_msg,
   packetbuf_clear();
   packetbuf_copyfrom(collect_msg, sizeof(struct collect_msg_t));
 
+  /* Save as last collect message sent */
+  last_sent_collect_message.event_seqn = collect_msg->event_seqn;
+  linkaddr_copy(&last_sent_collect_message.event_source,
+                &collect_msg->event_source);
+  linkaddr_copy(&last_sent_collect_message.sender, &collect_msg->sender);
+  last_sent_collect_message.value = collect_msg->value;
+  last_sent_collect_message.threshold = collect_msg->threshold;
+
   /* Send collect message in unicast to receiver node */
   const bool ret = connection_unicast_send(UNICAST_MSG_TYPE_COLLECT, receiver);
   if (!ret)
@@ -525,7 +534,6 @@ static bool send_collect_message(const struct collect_msg_t *collect_msg,
         collect_msg->sender.u8[0], collect_msg->sender.u8[1],
         collect_msg->value, collect_msg->threshold);
   else {
-    sending_collect_msg = true;
     LOG_INFO(
         "Sending collect message to %02x:%02x: "
         "{ event_seqn: %u, event_source: %02x:%02x, "
@@ -687,25 +695,26 @@ static void uc_recv(const struct unicast_hdr_t *header,
 
 static void uc_sent(int status, int num_tx) {
   if (status != MAC_TX_OK) {
-    /* Something bad happended */
-
-    /* Retry collect message */
-
+    /* ERROR */
     /* Collect message */
-    if (sending_collect_msg) {
-      LOG_ERROR("Error sending collect message on tx %d due to %d", num_tx,
+    if (!linkaddr_cmp(&last_sent_collect_message.sender, &linkaddr_null)) {
+      /* Last is a collect message */
+      LOG_ERROR("Retrying sending last collect message due to error %d",
                 status);
-      sending_collect_msg = false;
       /* Retry */
-      collect_timer_cb(NULL);
+      send_collect_message(&last_sent_collect_message,
+                           &connection_get_conn()->parent_node);
     }
 
     return;
   }
 
-  /* Message sent */
-  if (sending_collect_msg) {
-    sending_collect_msg = false;
-    LOG_DEBUG("Sent collect message");
+  /* SUCCESS */
+  /* Collect message */
+  if (!linkaddr_cmp(&last_sent_collect_message.sender, &linkaddr_null)) {
+    linkaddr_copy(&last_sent_collect_message.sender, &linkaddr_null);
+    LOG_DEBUG("Collect message sent");
   }
+
+  return;
 }

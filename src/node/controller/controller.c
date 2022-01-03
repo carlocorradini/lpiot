@@ -140,14 +140,20 @@ static void event_cb(uint16_t event_seqn, const linkaddr_t *event_source) {
   }
 
   /* Save event seqn */
+  /* TODO not sure */
   sensor_reading->seqn = event_seqn;
+
+  /* Clean possible old junk */
+  num_sensor_readings = 0;
+  for (i = 0; i < NUM_SENSORS; ++i) {
+    sensor_readings[i].reading_available = false;
+    sensor_readings[i].command = COMMAND_TYPE_NONE;
+  }
 
   LOG_INFO(
       "Handling event: "
       "{ seqn: %u, source: %02x:%02x}",
       event_seqn, event_source->u8[0], event_source->u8[1]);
-
-  /* TODO Maybe settare num_sensor_readings a 0 ? */
 
   /* Schedule sensor readings analysis */
   ctimer_set(&collect_timer, CONTROLLER_COLLECT_WAIT, collect_timer_cb, NULL);
