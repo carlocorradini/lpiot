@@ -369,12 +369,12 @@ static void actuation_commands(void) {
     }
 
     /* Reset */
+    num_sensor_readings = 0;
     for (i = 0; i < NUM_SENSORS; ++i) {
       sensor_reading = &sensor_readings[i];
 
       sensor_reading->command = COMMAND_TYPE_NONE;
       sensor_reading->reading_available = false;
     }
-    num_sensor_readings = 0;
   }
 }
