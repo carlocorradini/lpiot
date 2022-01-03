@@ -114,8 +114,8 @@ static void send_beacon_message(const struct beacon_msg_t *beacon_msg) {
     LOG_ERROR("Error sending beacon message");
     return;
   }
-  LOG_INFO("Sending beacon message: { seqn: %u, hopn: %u }", beacon_msg->seqn,
-           beacon_msg->hopn);
+  LOG_DEBUG("Sending beacon message: { seqn: %u, hopn: %u }", beacon_msg->seqn,
+            beacon_msg->hopn);
 }
 
 void beacon_recv_cb(const struct broadcast_hdr_t *header,
@@ -137,7 +137,7 @@ void beacon_recv_cb(const struct broadcast_hdr_t *header,
   /* Read RSSI of last reception */
   rssi = packetbuf_attr(PACKETBUF_ATTR_RSSI);
 
-  LOG_INFO(
+  LOG_DEBUG(
       "Received beacon message from %02x:%02x with rssi %d: "
       "{ seqn: %u, hopn: %u}",
       sender->u8[0], sender->u8[1], rssi, beacon_msg.seqn, beacon_msg.hopn);
