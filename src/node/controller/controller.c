@@ -191,6 +191,13 @@ static void collect_cb(uint16_t event_seqn, const linkaddr_t *event_source,
     return;
   }
 
+  /* Check if duplicate */
+  if (sensor_reading->reading_available) {
+    LOG_WARN("Collect from sensor %02x:%02x already received", sender->u8[0],
+             sender->u8[1]);
+    return;
+  }
+
   /* Check if collect's event is currently handled */
   if (event_seqn != event->seqn ||
       !linkaddr_cmp(event_source, &event->source)) {
@@ -367,14 +374,14 @@ static void actuation_commands(void) {
           event->source.u8[1]);
       break;
     }
+  }
 
-    /* Reset */
-    num_sensor_readings = 0;
-    for (i = 0; i < NUM_SENSORS; ++i) {
-      sensor_reading = &sensor_readings[i];
+  /* Reset */
+  num_sensor_readings = 0;
+  for (i = 0; i < NUM_SENSORS; ++i) {
+    sensor_reading = &sensor_readings[i];
 
-      sensor_reading->command = COMMAND_TYPE_NONE;
-      sensor_reading->reading_available = false;
-    }
+    sensor_reading->command = COMMAND_TYPE_NONE;
+    sensor_reading->reading_available = false;
   }
 }
