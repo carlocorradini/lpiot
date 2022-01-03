@@ -45,8 +45,6 @@
 #define CONNECTION_BEACON_FORWARD_DELAY (random_rand() % CLOCK_SECOND)
 
 /* --- ETC --- */
-/* FIXME Rimuovi etc please */
-
 /**
  * @brief Time to wait before sending an event message.
  */
@@ -59,19 +57,21 @@
   (CLOCK_SECOND * 3 + random_rand() % (CLOCK_SECOND * 2))
 
 /**
- * @brief Timeout for new event generation.
+ * @brief New event generation suppression time.
  */
-#define SUPPRESSION_TIMEOUT_NEW (CLOCK_SECOND * 12)
+#define ETC_SUPPRESSION_EVENT_NEW (CLOCK_SECOND * 12)
 
 /**
- * @brief Timeout for event repropagation.
+ * @brief Event propagation suppression time.
  */
-#define SUPPRESSION_TIMEOUT_PROP (SUPPRESSION_TIMEOUT_NEW - CLOCK_SECOND / 2)
+#define ETC_SUPPRESSION_EVENT_PROPAGATION \
+  (ETC_SUPPRESSION_EVENT_NEW - CLOCK_SECOND / 2)
 
 /**
- * @brief Timeout after a command to disable suppression.
+ * @brief Time to wait to disable suppression(s) after received a command
+ * message.
  */
-#define ETC_SUPPRESSION_TIMEOUT_END (CLOCK_SECOND / 2)
+#define ETC_SUPPRESSION_EVENT_END (CLOCK_SECOND / 2)
 
 /* --- CONTROLLER --- */
 /**

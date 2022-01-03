@@ -226,12 +226,12 @@ bool etc_trigger(uint32_t value, uint32_t threshold) {
   event.seqn += (event.seqn == 0 ? 0 : 1);
   linkaddr_copy(&event.source, &linkaddr_node_addr);
 
-  /* Start to suppress new trigger(s) */
-  ctimer_set(&suppression_timer_new, SUPPRESSION_TIMEOUT_NEW, NULL, NULL);
+  /* Start to suppress new event(s) */
+  ctimer_set(&suppression_timer_new, ETC_SUPPRESSION_EVENT_NEW, NULL, NULL);
 
-  /* Start to suppress new event message(s) */
-  ctimer_set(&suppression_timer_propagation, SUPPRESSION_TIMEOUT_PROP, NULL,
-             NULL);
+  /* Start to suppress event propagation */
+  ctimer_set(&suppression_timer_propagation, ETC_SUPPRESSION_EVENT_PROPAGATION,
+             NULL, NULL);
 
   /* Schedule collect message dispatch */
   ctimer_set(&collect_timer, ETC_COLLECT_START_DELAY, collect_timer_cb, NULL);
@@ -294,8 +294,8 @@ void event_msg_cb(const struct broadcast_hdr_t *header,
   }
 
   /* Start to suppress new event message(s) */
-  ctimer_set(&suppression_timer_propagation, SUPPRESSION_TIMEOUT_PROP, NULL,
-             NULL);
+  ctimer_set(&suppression_timer_propagation, ETC_SUPPRESSION_EVENT_PROPAGATION,
+             NULL, NULL);
 
   /* Schedule event message propagation */
   ctimer_set(&event_timer, ETC_EVENT_FORWARD_DELAY, event_timer_cb, NULL);
