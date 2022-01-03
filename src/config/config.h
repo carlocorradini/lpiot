@@ -68,10 +68,10 @@
   (ETC_SUPPRESSION_EVENT_NEW - CLOCK_SECOND / 2)
 
 /**
- * @brief Time to wait to disable suppression(s) after received a command
- * message.
+ * @brief Time to wait to disable suppression propagation after received a
+ * command message.
  */
-#define ETC_SUPPRESSION_EVENT_END (CLOCK_SECOND / 2)
+#define ETC_SUPPRESSION_EVENT_PROPAGATION_END (CLOCK_SECOND / 2)
 
 /* --- CONTROLLER --- */
 /**

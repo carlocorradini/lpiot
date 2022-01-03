@@ -93,6 +93,12 @@ static struct ctimer suppression_timer_new;
 static struct ctimer suppression_timer_propagation;
 
 /**
+ * @brief Timer to wait before stop event(s) propagation timer after a command
+ * message is received.
+ */
+static struct ctimer suppression_timer_propagation_end;
+
+/**
  * @brief Timer to wait before sending the event message.
  */
 static struct ctimer event_timer;
@@ -170,6 +176,13 @@ static bool sending_collect_msg = false;
  */
 static void command_msg_cb(const struct unicast_hdr_t *header,
                            const linkaddr_t *sender);
+
+/**
+ * @brief Suppression timer propagation end callback.
+ *
+ * @param ignored
+ */
+static void suppression_timer_propagation_end_cb(void *ignored);
 
 /**
  * @brief Send command message to receiver node.
@@ -586,6 +599,16 @@ static void command_msg_cb(const struct unicast_hdr_t *header,
   /* Forward to command callback */
   cb->command_cb(command_msg.event_seqn, &command_msg.event_source,
                  command_msg.command, command_msg.threshold);
+
+  /* Schedule stop event propagation suppression */
+  ctimer_set(&suppression_timer_propagation_end,
+             ETC_SUPPRESSION_EVENT_PROPAGATION_END,
+             suppression_timer_propagation_end_cb, NULL);
+}
+
+static void suppression_timer_propagation_end_cb(void *ignored) {
+  /* Stop event propagation suppression */
+  ctimer_stop(&suppression_timer_propagation);
 }
 
 static bool send_command_message(const struct command_msg_t *command_msg,
@@ -665,6 +688,8 @@ static void uc_recv(const struct unicast_hdr_t *header,
 static void uc_sent(int status, int num_tx) {
   if (status != MAC_TX_OK) {
     /* Something bad happended */
+
+    /* Retry collect message */
 
     /* Collect message */
     if (sending_collect_msg) {
