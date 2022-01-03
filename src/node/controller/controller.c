@@ -349,24 +349,32 @@ static void actuation_commands(void) {
     /* Ignore if no command */
     if (sensor_reading->command == COMMAND_TYPE_NONE) continue;
 
-    /* Send command message via ETC */
-    etc_command(&sensor_reading->address, sensor_reading->command,
-                sensor_reading->threshold);
-
     LOG_INFO(
         "Actuation command %d for sensor %02x:%02x on event "
         "{ seqn: %u, source: %02x:%02x }",
         sensor_reading->command, sensor_reading->address.u8[0],
         sensor_reading->address.u8[1], event->seqn, event->source.u8[0],
         event->source.u8[1]);
-  }
 
-  /* Reset */
-  for (i = 0; i < NUM_SENSORS; ++i) {
-    sensor_reading = &sensor_readings[i];
+    /* Send command message via ETC */
+    if (!etc_command(&sensor_reading->address, sensor_reading->command,
+                     sensor_reading->threshold)) {
+      LOG_ERROR(
+          "Error sending ETC command %d for sensor %02x:%02x on event "
+          "{ seqn: %u, source: %02x:%02x }",
+          sensor_reading->command, sensor_reading->address.u8[0],
+          sensor_reading->address.u8[1], event->seqn, event->source.u8[0],
+          event->source.u8[1]);
+      break;
+    }
 
-    sensor_reading->command = COMMAND_TYPE_NONE;
-    sensor_reading->reading_available = false;
+    /* Reset */
+    for (i = 0; i < NUM_SENSORS; ++i) {
+      sensor_reading = &sensor_readings[i];
+
+      sensor_reading->command = COMMAND_TYPE_NONE;
+      sensor_reading->reading_available = false;
+    }
+    num_sensor_readings = 0;
   }
-  num_sensor_readings = 0;
 }

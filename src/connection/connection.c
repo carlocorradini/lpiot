@@ -6,6 +6,7 @@
 
 #include "beacon/beacon.h"
 #include "logger/logger.h"
+#include "node/node.h"
 
 /**
  * @brief Connection callbacks pointer.
@@ -208,7 +209,7 @@ bool connection_unicast_send(enum unicast_msg_type_t type,
   const struct unicast_hdr_t uc_header = {.type = type};
 
   /* Check connection */
-  if (!connection_is_connected()) {
+  if (node_get_role() != NODE_ROLE_CONTROLLER && !connection_is_connected()) {
     LOG_WARN("Error sending unicast message: No connection available");
     return false;
   }

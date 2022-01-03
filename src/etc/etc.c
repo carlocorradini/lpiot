@@ -47,6 +47,23 @@ struct command_msg_t {
   uint32_t threshold;
 } __attribute__((packed));
 
+/**
+ * @brief Forward table entry.
+ * Defines how a message to a Sensor node should be forwarded.
+ * Note that there could be no forwarding rule available.
+ */
+struct forward_t {
+  /* Sensor node address (receiver). */
+  linkaddr_t sensor;
+  /* Forwarding node address (next-hop). */
+  linkaddr_t next_hop;
+};
+
+/**
+ * @brief Forwarding rules.
+ */
+static struct forward_t forwardings[NUM_SENSORS];
+
 /* Sensor value. */
 static uint32_t sensor_value;
 
@@ -150,6 +167,17 @@ static bool send_collect_message(const struct collect_msg_t *collect_msg,
 static void command_msg_cb(const struct unicast_hdr_t *header,
                            const linkaddr_t *sender);
 
+/**
+ * @brief Send command message to receiver node.
+ *
+ * @param command_msg Command message to send.
+ * @param receiver Receiver node address.
+ * @return true Command message sent.
+ * @return false Command message not sent due to an error.
+ */
+static bool send_command_message(const struct command_msg_t *command_msg,
+                                 const linkaddr_t *receiver);
+
 /* --- CONNECTION --- */
 /* --- Broadcast */
 /**
@@ -194,6 +222,13 @@ void etc_open(uint16_t channel, const struct etc_callbacks_t *callbacks) {
   event.seqn = 0;
   linkaddr_copy(&event.source, &linkaddr_null);
 
+  /* Initialize forwardings */
+  size_t i;
+  for (i = 0; i < NUM_SENSORS; ++i) {
+    linkaddr_copy(&forwardings[i].sensor, &SENSORS[i]);
+    linkaddr_copy(&forwardings[i].next_hop, &linkaddr_null);
+  }
+
   /* Open connection */
   connection_open(channel, &conn_cb);
 }
@@ -203,6 +238,10 @@ void etc_close(void) {
   cb = NULL;
   event.seqn = 0;
   linkaddr_copy(&event.source, &linkaddr_null);
+  sensor_value = 0;
+  sensor_threshold = 0;
+
+  /* TODO Timer! */
 
   /* Close connection */
   connection_close();
@@ -244,7 +283,37 @@ bool etc_trigger(uint32_t value, uint32_t threshold) {
 
 bool etc_command(const linkaddr_t *receiver, enum command_type_t command,
                  uint32_t threshold) {
-  /* Prepare and send command */
+  struct command_msg_t command_msg;
+  struct forward_t *forward = NULL;
+  size_t i;
+
+  /* Prepare command message */
+  command_msg.event_seqn = event.seqn;
+  linkaddr_copy(&command_msg.event_source, &event.source);
+  linkaddr_copy(&command_msg.receiver, receiver);
+  command_msg.command = command;
+  command_msg.threshold = threshold;
+
+  /* Find forwarding rule */
+  for (i = 0; i < NUM_SENSORS; ++i) {
+    /* Compare sensor address with command message receiver address */
+    if (!linkaddr_cmp(&forwardings[i].sensor, &command_msg.receiver)) continue;
+
+    /* Found */
+    forward = &forwardings[i];
+    break;
+  }
+
+  /* Check if forwarding rule exists */
+  if (forward == NULL || linkaddr_cmp(&forward->next_hop, &linkaddr_null)) {
+    LOG_ERROR(
+        "Unable to forward command message because no forwarding rule has "
+        "been found");
+    return false;
+  }
+
+  /* Send */
+  return send_command_message(&command_msg, &forward->next_hop);
 }
 
 /* --- EVENT MESSAGE --- */
@@ -337,6 +406,7 @@ static bool send_event_message(const struct event_msg_t *event_msg) {
 static void collect_msg_cb(const struct unicast_hdr_t *header,
                            const linkaddr_t *sender) {
   struct collect_msg_t collect_msg;
+  size_t i;
 
   /* Check received collect message validity */
   if (packetbuf_datalen() != sizeof(collect_msg)) {
@@ -356,6 +426,16 @@ static void collect_msg_cb(const struct unicast_hdr_t *header,
       collect_msg.event_source.u8[0], collect_msg.event_source.u8[1],
       collect_msg.sender.u8[0], collect_msg.sender.u8[1], collect_msg.value,
       collect_msg.threshold);
+
+  /* Update forwarding rule */
+  for (i = 0; i < NUM_SENSORS; ++i) {
+    /* Compare sensor address with collect message sender address */
+    if (!linkaddr_cmp(&forwardings[i].sensor, &collect_msg.sender)) continue;
+
+    /* Update */
+    linkaddr_copy(&forwardings[i].next_hop, sender);
+    break;
+  }
 
   /* Forward based on node role */
   switch (node_get_role()) {
@@ -444,7 +524,102 @@ static bool send_collect_message(const struct collect_msg_t *collect_msg,
 /* --- COMMAND MESSAGE --- */
 static void command_msg_cb(const struct unicast_hdr_t *header,
                            const linkaddr_t *sender) {
-  /* TODO */
+  struct command_msg_t command_msg;
+  struct forward_t *forward = NULL;
+  size_t i;
+
+  /* Check received command message validity */
+  if (packetbuf_datalen() != sizeof(command_msg)) {
+    LOG_ERROR("Received command message wrong size: %u byte",
+              packetbuf_datalen());
+    return;
+  }
+
+  /* Copy command message */
+  packetbuf_copyto(&command_msg);
+
+  LOG_INFO(
+      "Received command message from %02x:%02x: "
+      "{ receiver: %02x:%02x, command: %d, threshold: %lu, event_seqn: %u, "
+      "event_source: %02x:%02x }",
+      sender->u8[0], sender->u8[1], command_msg.receiver.u8[0],
+      command_msg.receiver.u8[1], command_msg.command, command_msg.threshold,
+      command_msg.event_seqn, command_msg.event_source.u8[0],
+      command_msg.event_source.u8[1]);
+
+  /* TODO Check is current event??? */
+
+  /* Check if receiver address */
+  if (!linkaddr_cmp(&command_msg.receiver, &linkaddr_node_addr)) {
+    /* Forward */
+
+    /* Find forwarding rule */
+    for (i = 0; i < NUM_SENSORS; ++i) {
+      /* Compare sensor address with command message receiver address */
+      if (!linkaddr_cmp(&forwardings[i].sensor, &command_msg.receiver))
+        continue;
+
+      /* Found */
+      forward = &forwardings[i];
+      break;
+    }
+
+    /* Check if forwarding rule exists */
+    if (forward == NULL || linkaddr_cmp(&forward->next_hop, &linkaddr_null)) {
+      LOG_ERROR(
+          "Unable to forward command message because no forwarding rule has "
+          "been found");
+      return;
+    }
+
+    /* Forward to next hop node */
+    send_command_message(&command_msg, &forward->next_hop);
+    return;
+  }
+
+  /* Me */
+  /* Forward to command callback */
+  cb->command_cb(command_msg.event_seqn, &command_msg.event_source,
+                 command_msg.command, command_msg.threshold);
+}
+
+static bool send_command_message(const struct command_msg_t *command_msg,
+                                 const linkaddr_t *receiver) {
+  /* Check connection */
+  if (node_get_role() != NODE_ROLE_CONTROLLER && !connection_is_connected()) {
+    LOG_WARN(
+        "Unable to send command message because the node is "
+        "disconnected");
+    return false;
+  }
+
+  /* Prepare packetbuf */
+  packetbuf_clear();
+  packetbuf_copyfrom(command_msg, sizeof(struct command_msg_t));
+
+  /* Send command message in unicast to receiver node */
+  const bool ret = connection_unicast_send(UNICAST_MSG_TYPE_COMMAND, receiver);
+  if (!ret)
+    LOG_ERROR(
+        "Error sending command message to %02x:%02x: "
+        "{ receiver: %02x:%02x, command: %d, threshold: %lu, event_seqn: %u, "
+        "event_source: %02x:%02x }",
+        receiver->u8[0], receiver->u8[1], command_msg->receiver.u8[0],
+        command_msg->receiver.u8[1], command_msg->command,
+        command_msg->threshold, command_msg->event_seqn,
+        command_msg->event_source.u8[0], command_msg->event_source.u8[1]);
+  else {
+    LOG_INFO(
+        "Sending command message to %02x:%02x: "
+        "{ receiver: %02x:%02x, command: %d, threshold: %lu, event_seqn: %u, "
+        "event_source: %02x:%02x }",
+        receiver->u8[0], receiver->u8[1], command_msg->receiver.u8[0],
+        command_msg->receiver.u8[1], command_msg->command,
+        command_msg->threshold, command_msg->event_seqn,
+        command_msg->event_source.u8[0], command_msg->event_source.u8[1]);
+  }
+
+  return ret;
 }
 
 /* --- CONNECTION --- */
