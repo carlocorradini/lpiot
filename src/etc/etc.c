@@ -406,7 +406,7 @@ static bool send_event_message(const struct event_msg_t *event_msg) {
   return ret;
 }
 
-/* --- COLLECT MESSAGE--- */
+/* --- COLLECT MESSAGE --- */
 static void collect_msg_cb(const struct unicast_hdr_t *header,
                            const linkaddr_t *sender) {
   struct collect_msg_t collect_msg;
@@ -425,7 +425,7 @@ static void collect_msg_cb(const struct unicast_hdr_t *header,
   LOG_INFO(
       "Received collect message from %02x:%02x: "
       "{ event_seqn: %u, event_source: %02x:%02x, "
-      "sender: %02x:%02x, value: %u, threshold: %u}",
+      "sender: %02x:%02x, value: %lu, threshold: %lu}",
       sender->u8[0], sender->u8[1], collect_msg.event_seqn,
       collect_msg.event_source.u8[0], collect_msg.event_source.u8[1],
       collect_msg.sender.u8[0], collect_msg.sender.u8[1], collect_msg.value,
@@ -454,9 +454,8 @@ static void collect_msg_cb(const struct unicast_hdr_t *header,
       }
 
       /* Forward collect message to parent node */
-      connection_unicast_send(header->type,
-                              &connection_get_conn()->parent_node);
-
+      /* FIXME In forward non voglio riscrivere packetbuf */
+      send_collect_message(&collect_msg, &connection_get_conn()->parent_node);
       break;
     }
     case NODE_ROLE_CONTROLLER: {
