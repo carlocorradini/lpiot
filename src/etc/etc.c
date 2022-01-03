@@ -705,6 +705,8 @@ static void uc_sent(int status, int num_tx) {
                            &connection_get_conn()->parent_node);
     }
 
+    /* TODO Remove forwarding entry if command error */
+
     return;
   }
 

@@ -264,6 +264,7 @@ static void collect_timer_cb(void *ignored) {
 
 static void actuation_logic(void) {
   size_t i, j;
+  uint8_t num_readings = 0;
   bool restart_check = false;
 
   /* Check at least 1 sensor data collected */
@@ -281,6 +282,7 @@ static void actuation_logic(void) {
       LOG_WARN("Sensor %02x:%02x: { }", sensor_readings[i].address.u8[0],
                sensor_readings[i].address.u8[1]);
     } else {
+      num_readings += 1;
       LOG_INFO("Sensor %02x:%02x: { seqn: %u, value: %lu, threshold: %lu } %s",
                sensor_readings[i].address.u8[0],
                sensor_readings[i].address.u8[1], sensor_readings[i].seqn,
@@ -288,6 +290,14 @@ static void actuation_logic(void) {
                sensor_readings[i].value >= sensor_readings[i].threshold ? "!!!"
                                                                         : "");
     }
+  }
+
+  /* Correctness check */
+  if (num_readings != num_sensor_readings) {
+    LOG_ERROR("!!!!!!!!!!!!!!!!");
+    LOG_ERROR("Available readings %u != %u Registered readings %u",
+              num_readings, num_sensor_readings);
+    LOG_ERROR("!!!!!!!!!!!!!!!!");
   }
 
   /* Search for nodes in need of actuation */
