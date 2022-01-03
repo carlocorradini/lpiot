@@ -259,22 +259,26 @@ static void actuation_logic(void) {
     return;
   }
 
-  LOG_INFO("Collected data from %u sensors of a total of %u sensors",
-           num_sensor_readings, NUM_SENSORS);
+  LOG_INFO("Collected data from %u/%u sensors", num_sensor_readings,
+           NUM_SENSORS);
 
-  /* Print missing Sensors */
+  /* Print sensor readings */
   for (i = 0; i < NUM_SENSORS; ++i) {
     if (!sensor_readings[i].reading_available) {
-      LOG_WARN("Missing data from sensor %02x:%02x",
-               sensor_readings[i].address.u8[0],
+      LOG_WARN("Sensor %02x:%02x: { }", sensor_readings[i].address.u8[0],
                sensor_readings[i].address.u8[1]);
+    } else {
+      LOG_INFO("Sensor %02x:%02x: { seqn: %u, value: %lu, threshold: %lu }",
+               sensor_readings[i].address.u8[0],
+               sensor_readings[i].address.u8[1], sensor_readings[i].seqn,
+               sensor_readings[i].value, sensor_readings[i].threshold);
     }
   }
 
   /* Search for nodes in need of actuation */
   while (true) {
     restart_check = false;
-    uint32_t value_min = 0;
+    uint32_t value_min = UINT32_MAX;
 
     /* Find min */
     for (i = 0; i < NUM_SENSORS; ++i) {
@@ -364,4 +368,5 @@ static void actuation_commands(void) {
     sensor_reading->command = COMMAND_TYPE_NONE;
     sensor_reading->reading_available = false;
   }
+  num_sensor_readings = 0;
 }

@@ -223,7 +223,7 @@ bool etc_trigger(uint32_t value, uint32_t threshold) {
     return false;
 
   /* Update event */
-  event.seqn += (event.seqn == 0 ? 0 : 1);
+  event.seqn += 1;
   linkaddr_copy(&event.source, &linkaddr_node_addr);
 
   /* Start to suppress new event(s) */
