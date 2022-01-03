@@ -281,10 +281,12 @@ static void actuation_logic(void) {
       LOG_WARN("Sensor %02x:%02x: { }", sensor_readings[i].address.u8[0],
                sensor_readings[i].address.u8[1]);
     } else {
-      LOG_INFO("Sensor %02x:%02x: { seqn: %u, value: %lu, threshold: %lu }",
+      LOG_INFO("Sensor %02x:%02x: { seqn: %u, value: %lu, threshold: %lu } %s",
                sensor_readings[i].address.u8[0],
                sensor_readings[i].address.u8[1], sensor_readings[i].seqn,
-               sensor_readings[i].value, sensor_readings[i].threshold);
+               sensor_readings[i].value, sensor_readings[i].threshold,
+               sensor_readings[i].value >= sensor_readings[i].threshold ? "!!!"
+                                                                        : "");
     }
   }
 
