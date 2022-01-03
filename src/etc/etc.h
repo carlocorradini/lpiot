@@ -107,10 +107,10 @@ bool etc_trigger(uint32_t value, uint32_t threshold);
  * @param receiver Receiver node address.
  * @param command Command to send.
  * @param threshold New threshold.
- * @return
+ * @return true Command sent.
+ * @return false Command not sent.
  */
-/* FIXME RETURN */
-int etc_command(const linkaddr_t *receiver, enum command_type_t command,
-                uint32_t threshold);
+bool etc_command(const linkaddr_t *receiver, enum command_type_t command,
+                 uint32_t threshold);
 
 #endif

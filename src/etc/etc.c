@@ -242,8 +242,8 @@ bool etc_trigger(uint32_t value, uint32_t threshold) {
   return true;
 }
 
-int etc_command(const linkaddr_t *receiver, enum command_type_t command,
-                uint32_t threshold) {
+bool etc_command(const linkaddr_t *receiver, enum command_type_t command,
+                 uint32_t threshold) {
   /* Prepare and send command */
 }
 
@@ -408,7 +408,7 @@ static bool send_collect_message(const struct collect_msg_t *collect_msg,
     LOG_WARN(
         "Unable to forward collect message because the node is "
         "disconnected");
-    return;
+    return false;
   }
 
   /* Prepare packetbuf */
@@ -421,7 +421,7 @@ static bool send_collect_message(const struct collect_msg_t *collect_msg,
     LOG_ERROR(
         "Error sending collect message to %02x:%02x: "
         "{ event_seqn: %u, event_source: %02x:%02x, "
-        "sender: %02x:%02x, value: %u, threshold: %u}",
+        "sender: %02x:%02x, value: %lu, threshold: %lu}",
         receiver->u8[0], receiver->u8[1], collect_msg->event_seqn,
         collect_msg->event_source.u8[0], collect_msg->event_source.u8[1],
         collect_msg->sender.u8[0], collect_msg->sender.u8[1],
@@ -429,9 +429,9 @@ static bool send_collect_message(const struct collect_msg_t *collect_msg,
   else {
     sending_collect_msg = true;
     LOG_INFO(
-        "Error sending collect message to %02x:%02x: "
+        "Sending collect message to %02x:%02x: "
         "{ event_seqn: %u, event_source: %02x:%02x, "
-        "sender: %02x:%02x, value: %u, threshold: %u}",
+        "sender: %02x:%02x, value: %lu, threshold: %lu}",
         receiver->u8[0], receiver->u8[1], collect_msg->event_seqn,
         collect_msg->event_source.u8[0], collect_msg->event_source.u8[1],
         collect_msg->sender.u8[0], collect_msg->sender.u8[1],

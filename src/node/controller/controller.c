@@ -1,5 +1,7 @@
 #include "controller.h"
 
+#include <sys/cc.h>
+
 #include "config/config.h"
 #include "etc/etc.h"
 #include "logger/logger.h"
@@ -34,6 +36,11 @@ static struct sensor_reading_t sensor_readings[NUM_SENSORS];
 static uint8_t num_sensor_readings;
 
 /**
+ * @brief Timer to wait before analyzing received sensor readings.
+ */
+static struct ctimer collect_timer;
+
+/**
  * @brief Event detection callback.
  * Notifies of an ongoing event dissemination.
  * After this notification, the controller waits for sensor readings.
@@ -43,61 +50,40 @@ static uint8_t num_sensor_readings;
  */
 static void event_cb(uint16_t event_seqn, const linkaddr_t *event_source);
 
-/* FXIME */
 /**
  * @brief Data collection reception callback.
  * Store the readings of all sensors.
  * When all readings have been collected, the controller can send commands.
- * TODO
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- * You may send commands earlier if some data is missing after a timeout,
- * running actuation logic on the acquired data.
  *
  * @param event_seqn Event sequence number.
  * @param event_source Address of the sensor that generated the event.
- * @param source Address of the source sensor.
+ * @param sender Address of the sensor node.
  * @param value Sensor value.
  * @param threshold Sensor threshold.
  */
 static void collect_cb(uint16_t event_seqn, const linkaddr_t *event_source,
-                       const linkaddr_t *source, uint32_t value,
+                       const linkaddr_t *sender, uint32_t value,
                        uint32_t threshold);
 
 /**
+ * @brief Collect timer callback.
+ *
+ * @param ignored
+ */
+static void collect_timer_cb(void *ignored);
+
+/**
  * @brief Actuation logic.
- * The actuation logic to be called after sensor readings have been
- * collected. This functions checks for the steady state conditions and
- * assigns commands to all sensor/actuators that are violating them. Should
- * be called before actuation_commands(), which sends ACTUATION messages
- * based on the results of actuation_logic().
+ * Actuation logic to be called after sensor readings have been
+ * collected.
+ * Checks for the steady state conditions and assigns commands to all
+ * sensor(s)/actuator(s) that are violating them.
  */
 static void actuation_logic(void);
 
 /**
  * @brief Actuation commands.
- * Sends actuations for all sensors with a pending command.
- * actuation_commands() should be called after actuation_logic(), as
- * the logic sets the command for each sensor in their associated structure.
+ * Send command to sensor(s)/actuator(s) that needs actuation.
  */
 static void actuation_commands(void);
 
@@ -114,6 +100,7 @@ void controller_init(void) {
   for (i = 0; i < NUM_SENSORS; ++i) {
     linkaddr_copy(&sensor_readings[i].address, &SENSORS[i]);
     sensor_readings[i].seqn = 0;
+    sensor_readings[i].value = 0;
     sensor_readings[i].threshold = CONTROLLER_MAX_DIFF;
     sensor_readings[i].reading_available = false;
     sensor_readings[i].command = COMMAND_TYPE_NONE;
@@ -125,6 +112,7 @@ void controller_init(void) {
 }
 
 static void event_cb(uint16_t event_seqn, const linkaddr_t *event_source) {
+  /* TODO Maybe ignorare se il timer non e' scaduto */
   struct sensor_reading_t *sensor_reading;
   size_t i;
 
@@ -136,155 +124,244 @@ static void event_cb(uint16_t event_seqn, const linkaddr_t *event_source) {
 
   /* Check if event source is known */
   if (i >= NUM_SENSORS) {
-    LOG_WARN("Event has unknown event source: %02x:%02x", event_source->u8[0],
+    LOG_WARN("Event has unknown source: %02x:%02x", event_source->u8[0],
              event_source->u8[1]);
     return;
   }
 
+  /* Check if event is old */
+  if (event_seqn != 0 && event_seqn <= sensor_reading->seqn) {
+    LOG_WARN(
+        "Discarding event with source %02x:%02x because last reading of seqn "
+        "%u >= %u received",
+        event_source->u8[0], event_source->u8[1], sensor_reading->seqn,
+        event_seqn);
+    return;
+  }
+
+  /* Save event seqn */
+  sensor_reading->seqn = event_seqn;
+
   LOG_INFO(
-      "Received event: "
+      "Handling event: "
       "{ seqn: %u, source: %02x:%02x}",
       event_seqn, event_source->u8[0], event_source->u8[1]);
 
-  /* Check if event is old */
-  if (event_seqn != 0 && event_seqn <= sensor_reading->seqn) {
-    LOG_WARN("Discarding event because last reading of seqn %u >= %u received",
-             sensor_reading->seqn, event_seqn);
-    return;
-  }
+  /* TODO Maybe settare num_sensor_readings a 0 ? */
 
-  /* TODO Wait for sensor readings with timer */
+  /* Schedule sensor readings analysis */
+  ctimer_set(&collect_timer, CONTROLLER_COLLECT_WAIT, collect_timer_cb, NULL);
 }
 
 static void collect_cb(uint16_t event_seqn, const linkaddr_t *event_source,
-                       const linkaddr_t *source, uint32_t value,
+                       const linkaddr_t *sender, uint32_t value,
                        uint32_t threshold) {
-  /* What if controller has not seen the event message for this collection?
-   * Add proper logging! */
-
-  /* Add sensor reading (careful with duplicates!) */
-
-  /* Logging (based on the current event handled by the controller,
-   * identified by the event_source and its sequence number);
-   * in principle, this may not be the same event_source and event_seqn
-   * in the callback, if the transmission was triggered by a
-   * concurrent event. To match logs, the controller should
-   * always use the same event_source and event_seqn for collection
-   * and actuation */
   const struct etc_event_t *event = etc_get_current_event();
-  LOG_INFO("COLLECT [%02x:%02x, %u] %02x:%02x (%lu, %lu)", event->source.u8[0],
-           event->source.u8[1], event->seqn, source->u8[0], source->u8[1],
-           value, threshold);
+  struct sensor_reading_t *sensor_reading = NULL;
+  struct sensor_reading_t *event_sensor_reading = NULL;
+  size_t i;
 
-  /* If all data was collected, call actuation logic */
-}
+  /* Find sensor reading(s) */
+  for (i = 0; i < NUM_SENSORS; ++i) {
+    /* Sensor reading */
+    if (sensor_reading == NULL)
+      sensor_reading = (linkaddr_cmp(sender, &sensor_readings[i].address)
+                            ? &sensor_readings[i]
+                            : NULL);
+    /* Event sensor reading */
+    if (event_sensor_reading == NULL)
+      event_sensor_reading =
+          (linkaddr_cmp(event_source, &sensor_readings[i].address)
+               ? &sensor_readings[i]
+               : NULL);
+    /* Found */
+    if (sensor_reading != NULL && event_sensor_reading != NULL) break;
+  }
 
-/**
- * @brief Actuation logic.
- * The actuation logic to be called after sensor readings have been
- * collected. This functions checks for the steady state conditions and
- * assigns commands to all sensor/actuators that are violating them. Should
- * be called before actuation_commands(), which sends ACTUATION messages
- * based on the results of actuation_logic().
- */
-static void actuation_logic(void) {
-  if (num_sensor_readings < 1) {
-    LOG_INFO("Controller: No data collected");
+  /* Check if sender is known */
+  if (sensor_reading == NULL) {
+    LOG_WARN("Collect has unknown sender: %02x:%02x", sender->u8[0],
+             sender->u8[1]);
+    return;
+  }
+  /* Check if event source is known */
+  if (event_sensor_reading == NULL) {
+    LOG_WARN("Collect has unknown event source: %02x:%02x", event_source->u8[0],
+             event_source->u8[1]);
     return;
   }
 
-  /* Debug: missing sensors */
-  int i, j;
-  for (i = 0; i < NUM_SENSORS; i++) {
+  /* Check if collect's event is currently handled */
+  if (event_seqn != event->seqn ||
+      !linkaddr_cmp(event_source, &event->source)) {
+    LOG_WARN(
+        "Collect event { seqn: %u, source: %02x:%02x } is not currently "
+        "handled event { seqn: %u, source: %02x:%02x }",
+        event_seqn, event_source->u8[0], event_source->u8[1], event->seqn,
+        event->source.u8[0], event->source.u8[1]);
+    return;
+  }
+  /* Check if collect's event is saved */
+  if (event_seqn != event_sensor_reading->seqn ||
+      !linkaddr_cmp(event_source, &event_sensor_reading->address)) {
+    LOG_WARN(
+        "Collect event { seqn: %u, source: %02x:%02x } "
+        "is not saved { seqn: %u, source: %02x:%02x }",
+        event_seqn, event_source->u8[0], event_source->u8[1],
+        event_sensor_reading->seqn, event_sensor_reading->address.u8[0],
+        event_sensor_reading->address.u8[1]);
+    return;
+  }
+
+  /* Check if collect's event is old done in event_cb and checked thanks to
+   * event-sensor_reading */
+
+  /* Save reading */
+  sensor_reading->value = value;
+  sensor_reading->threshold = threshold;
+  sensor_reading->reading_available = true;
+  sensor_reading->command = COMMAND_TYPE_NONE;
+
+  LOG_INFO(
+      "Collect from sensor %02x:%02x of event { seqn: %u, source: %02x:%02x }: "
+      "{ value: %lu, threshold: %lu }",
+      sender->u8[0], sender->u8[1], event->seqn, event->source.u8[0],
+      event->source.u8[1], value, threshold);
+
+  /* Increase sensor readings counter */
+  num_sensor_readings += 1;
+
+  if (num_sensor_readings >= NUM_SENSORS) {
+    /* Stop collect timer */
+    ctimer_stop(&collect_timer);
+    /* Trigger collect timer manually */
+    collect_timer_cb(NULL);
+  }
+}
+
+static void collect_timer_cb(void *ignored) {
+  /* All sensors data are collected
+   * or timer expired */
+
+  /* Actuate */
+  actuation_logic();
+  /* Send command(s) */
+  actuation_commands();
+}
+
+static void actuation_logic(void) {
+  size_t i, j;
+  bool restart_check = false;
+
+  /* Check at least 1 sensor data collected */
+  if (num_sensor_readings <= 0) {
+    LOG_WARN("Could not actuate due to no data collected");
+    return;
+  }
+
+  LOG_INFO("Collected data from %u sensors of a total of %u sensors",
+           num_sensor_readings, NUM_SENSORS);
+
+  /* Print missing Sensors */
+  for (i = 0; i < NUM_SENSORS; ++i) {
     if (!sensor_readings[i].reading_available) {
-      LOG_INFO("Controller: Missing %02x:%02x data",
+      LOG_WARN("Missing data from sensor %02x:%02x",
                sensor_readings[i].address.u8[0],
                sensor_readings[i].address.u8[1]);
     }
   }
 
   /* Search for nodes in need of actuation */
-  bool restart_check = false;
   while (true) {
     restart_check = false;
+    uint32_t value_min = 0;
 
     /* Find min */
-    size_t value_min = 0;
-    for (i = 0; i < NUM_SENSORS; i++) {
-      if (sensor_readings[i].reading_available) {
-        value_min = sensor_readings[i].value;
-        break;
-      }
-    }
-    for (; i < NUM_SENSORS; i++) {
+    for (i = 0; i < NUM_SENSORS; ++i) {
       if (sensor_readings[i].reading_available) {
         value_min = MIN(value_min, sensor_readings[i].value);
       }
     }
 
-    /* Check for any violation of the steady state condition,
-     * and for sensors with outdated thresholds. */
-    for (i = 0; i < NUM_SENSORS; i++) {
-      for (j = 0; j < NUM_SENSORS; j++) {
+    /* Check for any violation of the steady state condition, and for sensors
+     * with outdated thresholds */
+    for (i = 0; i < NUM_SENSORS; ++i) {
+      for (j = 0; j < NUM_SENSORS; ++j) {
         if (!sensor_readings[i].reading_available) continue;
 
-        /* Check actuation command needed, if any;
-         * case 1) the maximum difference is being exceeded;
-         * case 2) the current (local) threshold of a node is being
-         * exceeded.
+        /* Check actuation command needed, if any:
+         * case 1) The maximum difference is being exceeded
+         * case 2) The current (local) threshold of a node is being exceeded
          */
         if (sensor_readings[j].reading_available &&
             (sensor_readings[i].value >=
                  sensor_readings[j].value + CONTROLLER_MAX_DIFF ||
              sensor_readings[i].threshold > CONTROLLER_MAX_THRESHOLD)) {
+          /* Case 1: RESET */
           sensor_readings[i].command = COMMAND_TYPE_RESET;
           sensor_readings[i].value = 0;
           sensor_readings[i].threshold = CONTROLLER_MAX_DIFF;
 
-          LOG_INFO("Controller: Reset %02x:%02x (%lu, %lu)",
-                   sensor_readings[i].address.u8[0],
-                   sensor_readings[i].address.u8[1], sensor_readings[i].value,
-                   sensor_readings[i].threshold);
+          LOG_DEBUG(
+              "Actuation logic command RESET for sensor %02x:%02x: "
+              "{ value: %lu, threshold: %lu }",
+              sensor_readings[i].address.u8[0],
+              sensor_readings[i].address.u8[1], sensor_readings[i].value,
+              sensor_readings[i].threshold);
 
-          /* A value was changed, restart values check */
+          /* Value changed */
           restart_check = true;
         } else if (sensor_readings[i].value > sensor_readings[i].threshold) {
+          /* Case 2: THRESHOLD */
           sensor_readings[i].command = COMMAND_TYPE_THRESHOLD;
           sensor_readings[i].threshold += value_min;
 
-          LOG_INFO("Controller: Update threshold %02x:%02x (%lu, %lu)",
-                   sensor_readings[i].address.u8[0],
-                   sensor_readings[i].address.u8[1], sensor_readings[i].value,
-                   sensor_readings[i].threshold);
+          LOG_DEBUG(
+              "Actuation logic command THRESHOLD for sensor %02x:%02x: "
+              "{ value: %lu, threshold: %lu }",
+              sensor_readings[i].address.u8[0],
+              sensor_readings[i].address.u8[1], sensor_readings[i].value,
+              sensor_readings[i].threshold);
 
-          /* A value was changed, restart values check */
+          /* Value changed */
           restart_check = true;
         }
       }
     }
+
+    /* Stop if no value changed */
     if (!restart_check) break;
   }
 }
 
-/**
- * @brief Actuation commands.
- * Sends actuations for all sensors with a pending command.
- * actuation_commands() should be called after actuation_logic(), as
- * the logic sets the command for each sensor in their associated structure.
- */
 static void actuation_commands(void) {
-  int i;
-  for (i = 0; i < NUM_SENSORS; i++) {
-    if (sensor_readings[i].command != COMMAND_TYPE_NONE) {
-      etc_command(&sensor_readings[i].address, sensor_readings[i].command,
-                  sensor_readings[i].threshold);
+  size_t i;
+  const struct etc_event_t *event = etc_get_current_event();
+  struct sensor_reading_t *sensor_reading = NULL;
 
-      /* Logging (based on the current event, expressed by source seqn) */
-      const struct etc_event_t *event = etc_get_current_event();
-      LOG_INFO("COMMAND [%02x:%02x, %u] %02x:%02x", event->source.u8[0],
-               event->source.u8[1], event->seqn,
-               sensor_readings[i].address.u8[0],
-               sensor_readings[i].address.u8[1]);
-    }
+  for (i = 0; i < NUM_SENSORS; ++i) {
+    sensor_reading = &sensor_readings[i];
+
+    /* Ignore if no command */
+    if (sensor_reading->command == COMMAND_TYPE_NONE) continue;
+
+    /* Send command message via ETC */
+    etc_command(&sensor_reading->address, sensor_reading->command,
+                sensor_reading->threshold);
+
+    LOG_INFO(
+        "Actuation command %d for sensor %02x:%02x on event "
+        "{ seqn: %u, source: %02x:%02x }",
+        sensor_reading->command, sensor_reading->address.u8[0],
+        sensor_reading->address.u8[1], event->seqn, event->source.u8[0],
+        event->source.u8[1]);
+  }
+
+  /* Reset */
+  for (i = 0; i < NUM_SENSORS; ++i) {
+    sensor_reading = &sensor_readings[i];
+
+    sensor_reading->command = COMMAND_TYPE_NONE;
+    sensor_reading->reading_available = false;
   }
 }

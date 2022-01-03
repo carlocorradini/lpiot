@@ -74,8 +74,8 @@ static void sensor_timer_cb(void *ignored) {
     } else {
       /* Success */
       const struct etc_event_t *event = etc_get_current_event();
-      LOG_INFO("Trigger [%02x:%02x, %u]", event->source.u8[0],
-               event->source.u8[1], event->seqn);
+      LOG_INFO("Trigger { seqn: %u, source: %02x:%02x }", event->seqn,
+               event->source.u8[0], event->source.u8[1]);
     }
   }
 

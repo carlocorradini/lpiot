@@ -111,7 +111,7 @@ static void send_beacon_message(const struct beacon_msg_t *beacon_msg) {
   const bool ret = connection_broadcast_send(BROADCAST_MSG_TYPE_BEACON);
   if (!ret) {
     /* Error */
-    LOG_ERROR("Error sending beacon message: %d", ret);
+    LOG_ERROR("Error sending beacon message");
     return;
   }
   LOG_INFO("Sending beacon message: { seqn: %u, hopn: %u }", beacon_msg->seqn,
