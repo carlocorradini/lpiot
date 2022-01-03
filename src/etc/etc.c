@@ -129,8 +129,6 @@ static void event_timer_cb(void *ignored);
 static bool send_event_message(const struct event_msg_t *event_msg);
 
 /* --- COLLECT MESSAGE --- */
-static bool sending_collect_msg = false;
-
 /**
  * @brief Collect message receive callback.
  *
@@ -158,6 +156,10 @@ static void collect_timer_cb(void *ignored);
  */
 static bool send_collect_message(const struct collect_msg_t *collect_msg,
                                  const linkaddr_t *receiver);
+
+/* Flag if sending collect message sending */
+/* FIXME */
+static bool sending_collect_msg = false;
 
 /* --- COMMAND MESSAGE--- */
 /**
