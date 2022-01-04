@@ -15,8 +15,8 @@ static enum node_role_t node_role_cache = NODE_ROLE_UNKNOWN;
 /**
  * @brief String representation of node roles.
  */
-static const char const* node_role_strings[] = {"UNKNOWN", "CONTROLLER",
-                                                "SENSOR/ACTUATOR", "FORWARDER"};
+static const char* node_role_strings[] = {"UNKNOWN", "CONTROLLER",
+                                          "SENSOR/ACTUATOR", "FORWARDER"};
 
 enum node_role_t node_get_role(void) {
   size_t i;
@@ -38,6 +38,6 @@ enum node_role_t node_get_role(void) {
   return node_role_cache = NODE_ROLE_FORWARDER;
 }
 
-const char const* node_get_role_name(void) {
+const char* node_get_role_name(void) {
   return node_role_strings[node_get_role()];
 }

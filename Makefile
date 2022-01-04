@@ -55,6 +55,9 @@ PROJECT_SOURCEFILES += \
 all: $(CONTIKI_PROJECT)
 
 cleanall: distclean
-	rm -f symbols.c symbols.h COOJA.log
+	rm -f symbols.c symbols.h
+	rm -f app.elf app.hex app.zoul
+	rm -rf obj_zoul
+	rm -f COOJA.log
 
 include $(CONTIKI)/Makefile.include

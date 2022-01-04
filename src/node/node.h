@@ -40,6 +40,6 @@ enum node_role_t node_get_role(void);
  *
  * @return Node role name.
  */
-const char const* node_get_role_name(void);
+const char* node_get_role_name(void);
 
 #endif

@@ -1,7 +1,13 @@
 /obj_sky
+/obj_zoul
 /symbols.c
 /symbols.h
 /app.sky
+/app.bin
+/app.elf
+/app.hex
+/app.zoul
 /contiki-sky.a
 /contiki-sky.map
+/app-zoul.map
 *.log
