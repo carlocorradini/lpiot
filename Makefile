@@ -37,8 +37,10 @@ PROJECT_SOURCEFILES += \
 					   connection.c beacon.c \
 					   etc.c \
 					   logger.c \
-					   node.c controller.c forwarder.c sensor.c \
-					   simple-energest.c
+					   node.c controller.c forwarder.c sensor.c
+ifeq ($(STATS), true)
+PROJECT_SOURCEFILES += simple-energest.c
+endif
 
 # --- RECIPES
 all: $(CONTIKI_PROJECT)

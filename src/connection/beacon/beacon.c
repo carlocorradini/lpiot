@@ -123,6 +123,10 @@ void beacon_recv_cb(const struct broadcast_hdr_t *header,
   struct beacon_msg_t beacon_msg;
   uint16_t rssi;
   size_t connection_index = 0;
+  size_t i;
+
+  /* Skip if controller node */
+  if (node_get_role() == NODE_ROLE_CONTROLLER) return;
 
   /* Check received beacon message validity */
   if (packetbuf_datalen() != sizeof(beacon_msg)) {
@@ -159,7 +163,7 @@ void beacon_recv_cb(const struct broadcast_hdr_t *header,
       if (beacon_msg.hopn + 1 > connections[connection_index].hopn)
         continue; /* Worse -> Far */
       if (beacon_msg.hopn + 1 == connections[connection_index].hopn &&
-          rssi < connections[connection_index].rssi)
+          rssi <= connections[connection_index].rssi)
         continue; /* Worse -> Weak */
 
       /* Better -> Near or Strong */
@@ -168,6 +172,14 @@ void beacon_recv_cb(const struct broadcast_hdr_t *header,
 
     if (connection_index >= CONNECTION_BEACON_MAX_CONNECTIONS)
       return; /* Far or Weak */
+  }
+
+  /* Remove (possible) duplicated parent node */
+  for (i = 0; i < CONNECTION_BEACON_MAX_CONNECTIONS; ++i) {
+    if (!linkaddr_cmp(&connections[i].parent_node, sender)) continue;
+    shift_left_connections(i);
+    LOG_DEBUG("Removed duplicate parent node %02x:%02x", sender->u8[0],
+              sender->u8[1]);
   }
 
   /* Right shift connections to accomodate better ith connection */
