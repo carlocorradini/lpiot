@@ -181,18 +181,6 @@ void beacon_recv_cb(const struct broadcast_hdr_t *header,
       return; /* Far or Weak */
   }
 
-  /* Remove (possible) duplicate parent node */
-  i = 0;
-  while (i < CONNECTION_BEACON_MAX_CONNECTIONS) {
-    if (linkaddr_cmp(&connections[i].parent_node, sender)) {
-      shift_left_connections(i);
-      LOG_DEBUG("Removed duplicate parent node %02x:%02x", sender->u8[0],
-                sender->u8[1]);
-    } else {
-      ++i;
-    }
-  }
-
   /* Right shift connections to accomodate better ith connection */
   shift_right_connections(connection_index);
 
@@ -212,12 +200,22 @@ void beacon_recv_cb(const struct broadcast_hdr_t *header,
     /* Schedule beacon message propagation only if best */
     ctimer_set(&beacon_timer, CONNECTION_BEACON_FORWARD_DELAY, beacon_timer_cb,
                NULL);
-  } else
+  } else {
     LOG_DEBUG("Backup parent %02x:%02x at %d: { hopn: %u, rssi: %d }",
               connections[connection_index].parent_node.u8[0],
               connections[connection_index].parent_node.u8[1], connection_index,
               connections[connection_index].hopn,
               connections[connection_index].rssi);
+  }
+
+  /* Remove (possible) duplicate parent node */
+  for (i = connection_index + 1; i < CONNECTION_BEACON_MAX_CONNECTIONS; ++i) {
+    if (!linkaddr_cmp(&connections[i].parent_node, sender)) continue;
+    shift_left_connections(i);
+    LOG_DEBUG("Removed duplicate parent node %02x:%02x", sender->u8[0],
+              sender->u8[1]);
+    --i;
+  }
 }
 
 static void beacon_timer_cb(void *ignored) {
