@@ -2,9 +2,8 @@
 CONTIKI_PROJECT = app
 
 # --- CONFIGURATION
-# Enable debug
-DEBUG ?= false
-
+# Statistics
+STATS ?= false
 # - Contiki
 DEFINES = PROJECT_CONF_H=\"src/config/project_conf.h\"
 CONTIKI_WITH_RIME = 1
@@ -19,11 +18,10 @@ BOARD? = firefly
 LDFLAGS += -specs=nosys.specs
 endif
 endif
-
 # - CC
-# Debug flag
-ifeq ($(DEBUG), true)
-CFLAGS += -DDEBUG -g
+# Statistics
+ifeq ($(STATS), true)
+CFLAGS += -DSTATS
 endif
 
 # --- SOURCE FILES

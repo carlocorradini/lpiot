@@ -11,10 +11,10 @@
 /**
  * @brief Logger level.
  */
-#ifndef DEBUG
+#ifndef STATS
 #define LOGGER_LEVEL LOG_LEVEL_INFO
 #else
-#define LOGGER_LEVEL LOG_LEVEL_DEBUG
+#define LOGGER_LEVEL LOG_LEVEL_DISABLED
 #endif
 
 /* --- CONNECTION --- */

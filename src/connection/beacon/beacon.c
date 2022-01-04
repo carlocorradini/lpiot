@@ -268,9 +268,8 @@ static void shift_left_connections(size_t from) {
 }
 
 static void print_connections(void) {
-#ifndef DEBUG
-  return;
-#endif
+  if (!logger_is_enabled(LOG_LEVEL_DEBUG)) return;
+
   size_t i;
   const struct connection_t *conn;
 
