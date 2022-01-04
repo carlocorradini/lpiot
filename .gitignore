@@ -11,3 +11,5 @@
 /contiki-sky.map
 /app-zoul.map
 *.log
+*.testlog
+*_mrm*.csv

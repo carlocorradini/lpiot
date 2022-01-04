@@ -113,6 +113,7 @@ void controller_init(void) {
 
 static void event_cb(uint16_t event_seqn, const linkaddr_t *event_source) {
   /* TODO Maybe ignorare se il timer non e' scaduto */
+  const struct etc_event_t *event = etc_get_current_event();
   struct sensor_reading_t *sensor_reading;
   size_t i;
 
@@ -153,7 +154,11 @@ static void event_cb(uint16_t event_seqn, const linkaddr_t *event_source) {
   LOG_INFO(
       "Handling event: "
       "{ seqn: %u, source: %02x:%02x}",
-      event_seqn, event_source->u8[0], event_source->u8[1]);
+      event->seqn, event->source.u8[0], event->source.u8[1]);
+#ifdef STATS
+  printf("EVENT [%02x:%02x, %u]\n", event->source.u8[0], event->source.u8[1],
+         event->seqn);
+#endif
 
   /* Schedule sensor readings analysis */
   ctimer_set(&collect_timer, CONTROLLER_COLLECT_WAIT, collect_timer_cb, NULL);
@@ -197,14 +202,7 @@ static void collect_cb(uint16_t event_seqn, const linkaddr_t *event_source,
     return;
   }
 
-  /* Check if duplicate */
-  if (sensor_reading->reading_available) {
-    LOG_WARN("Collect from sensor %02x:%02x already received", sender->u8[0],
-             sender->u8[1]);
-    return;
-  }
-
-  /* Check if collect's event is currently handled */
+  /* Check if collect's event is not handled */
   if (event_seqn != event->seqn ||
       !linkaddr_cmp(event_source, &event->source)) {
     LOG_WARN(
@@ -226,6 +224,15 @@ static void collect_cb(uint16_t event_seqn, const linkaddr_t *event_source,
     return;
   }
 
+  /* Check if duplicate */
+  if (sensor_reading->reading_available ||
+      (value == sensor_reading->value &&
+       threshold == sensor_reading->threshold)) {
+    LOG_WARN("Collect from sensor %02x:%02x already received", sender->u8[0],
+             sender->u8[1]);
+    return;
+  }
+
   /* Check if collect's event is old done in event_cb and checked thanks to
    * event-sensor_reading */
 
@@ -235,14 +242,19 @@ static void collect_cb(uint16_t event_seqn, const linkaddr_t *event_source,
   sensor_reading->reading_available = true;
   sensor_reading->command = COMMAND_TYPE_NONE;
 
+  /* Increase sensor readings counter */
+  num_sensor_readings += 1;
+
   LOG_INFO(
       "Collect from sensor %02x:%02x of event { seqn: %u, source: %02x:%02x }: "
       "{ value: %lu, threshold: %lu }",
       sender->u8[0], sender->u8[1], event->seqn, event->source.u8[0],
       event->source.u8[1], value, threshold);
-
-  /* Increase sensor readings counter */
-  num_sensor_readings += 1;
+#ifdef STATS
+  printf("COLLECT [%02x:%02x, %u] %02x:%02x (%lu, %lu)\n", event->source.u8[0],
+         event->source.u8[1], event->seqn, sender->u8[0], sender->u8[1], value,
+         threshold);
+#endif
 
   if (num_sensor_readings >= NUM_SENSORS) {
     /* Stop collect timer */
@@ -268,8 +280,11 @@ static void actuation_logic(void) {
   bool restart_check = false;
 
   /* Check at least 1 sensor data collected */
-  if (num_sensor_readings <= 0) {
+  if (num_sensor_readings < 1) {
     LOG_WARN("Could not actuate due to no data collected");
+#ifdef STATS
+    printf("Controller: No data collected\n");
+#endif
     return;
   }
 
@@ -281,6 +296,11 @@ static void actuation_logic(void) {
     if (!sensor_readings[i].reading_available) {
       LOG_WARN("Sensor %02x:%02x: { }", sensor_readings[i].address.u8[0],
                sensor_readings[i].address.u8[1]);
+#ifdef STATS
+      printf("Controller: Missing %02x:%02x data\n",
+             sensor_readings[i].address.u8[0],
+             sensor_readings[i].address.u8[1]);
+#endif
     } else {
       num_readings += 1;
       LOG_INFO("Sensor %02x:%02x: { seqn: %u, value: %lu, threshold: %lu } %s",
@@ -337,6 +357,12 @@ static void actuation_logic(void) {
               sensor_readings[i].address.u8[0],
               sensor_readings[i].address.u8[1], sensor_readings[i].value,
               sensor_readings[i].threshold);
+#ifdef STATS
+          printf("Controller: Reset %02x:%02x (%lu, %lu)\n",
+                 sensor_readings[i].address.u8[0],
+                 sensor_readings[i].address.u8[1], sensor_readings[i].value,
+                 sensor_readings[i].threshold);
+#endif
 
           /* Value changed */
           restart_check = true;
@@ -351,6 +377,12 @@ static void actuation_logic(void) {
               sensor_readings[i].address.u8[0],
               sensor_readings[i].address.u8[1], sensor_readings[i].value,
               sensor_readings[i].threshold);
+#ifdef STATS
+          printf("Controller: Update threshold %02x:%02x (%lu, %lu)\n",
+                 sensor_readings[i].address.u8[0],
+                 sensor_readings[i].address.u8[1], sensor_readings[i].value,
+                 sensor_readings[i].threshold);
+#endif
 
           /* Value changed */
           restart_check = true;
@@ -374,13 +406,6 @@ static void actuation_commands(void) {
     /* Ignore if no command */
     if (sensor_reading->command == COMMAND_TYPE_NONE) continue;
 
-    LOG_INFO(
-        "Actuation command %d for sensor %02x:%02x on event "
-        "{ seqn: %u, source: %02x:%02x }",
-        sensor_reading->command, sensor_reading->address.u8[0],
-        sensor_reading->address.u8[1], event->seqn, event->source.u8[0],
-        event->source.u8[1]);
-
     /* Send command message via ETC */
     if (!etc_command(&sensor_reading->address, sensor_reading->command,
                      sensor_reading->threshold)) {
@@ -392,6 +417,18 @@ static void actuation_commands(void) {
           event->source.u8[1]);
       break;
     }
+
+    LOG_INFO(
+        "Actuation command %d for sensor %02x:%02x on event "
+        "{ seqn: %u, source: %02x:%02x }",
+        sensor_reading->command, sensor_reading->address.u8[0],
+        sensor_reading->address.u8[1], event->seqn, event->source.u8[0],
+        event->source.u8[1]);
+#ifdef STATS
+    printf("COMMAND [%02x:%02x, %u] %02x:%02x\n", event->source.u8[0],
+           event->source.u8[1], event->seqn, sensor_readings[i].address.u8[0],
+           sensor_readings[i].address.u8[1]);
+#endif
   }
 
   /* Reset */

@@ -65,6 +65,9 @@ static void sensor_timer_cb(void *ignored) {
 
   LOG_INFO("Reading { value: %lu, threshold: %lu }", sensor_value,
            sensor_threshold);
+#ifdef STATS
+  printf("Reading (%lu, %lu)\n", sensor_value, sensor_threshold);
+#endif
 
   /* Check threshold */
   if (sensor_value > sensor_threshold) {
@@ -77,6 +80,10 @@ static void sensor_timer_cb(void *ignored) {
       const struct etc_event_t *event = etc_get_current_event();
       LOG_INFO("Trigger { seqn: %u, source: %02x:%02x }", event->seqn,
                event->source.u8[0], event->source.u8[1]);
+#ifdef STATS
+      printf("TRIGGER [%02x:%02x, %u]\n", event->source.u8[0],
+             event->source.u8[1], event->seqn);
+#endif
     }
   }
 
@@ -91,6 +98,11 @@ static void command_cb(uint16_t event_seqn, const linkaddr_t *event_source,
       "{ command: %d, threshold: %lu, "
       "event_seqn: %u, event_source: %02x:%02x }: ",
       command, threshold, event_seqn, event_source->u8[0], event_source->u8[1]);
+#ifdef STATS
+  printf("ACTUATION [%02x:%02x, %u] %02x:%02x\n", event_source->u8[0],
+         event_source->u8[1], event_seqn, linkaddr_node_addr.u8[0],
+         linkaddr_node_addr.u8[1]);
+#endif
 
   /* Actuate */
   switch (command) {

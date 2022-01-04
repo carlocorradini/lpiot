@@ -43,8 +43,7 @@
 #include "simple-energest.h"
 
 #include <contiki.h>
-
-#include "logger/logger.h"
+#include <stdio.h>
 
 static uint16_t cnt;
 static uint32_t last_cpu, last_lpm, last_tx, last_rx;
@@ -83,8 +82,10 @@ void simple_energest_step(void) {
   last_tx = curr_tx;
   last_rx = curr_rx;
 
-  LOG_INFO("Energest: %u %lu %lu %lu %lu", cnt++, delta_cpu, delta_lpm,
-           delta_tx, delta_rx);
+#ifdef STATS
+  printf("Energest: %u %lu %lu %lu %lu\n", cnt++, delta_cpu, delta_lpm,
+         delta_tx, delta_rx);
+#endif
 }
 
 PROCESS_THREAD(energest_process, ev, data) {
