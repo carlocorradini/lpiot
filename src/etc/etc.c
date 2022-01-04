@@ -163,11 +163,6 @@ static void collect_timer_cb(void *ignored);
 static bool send_collect_message(const struct collect_msg_t *collect_msg,
                                  const linkaddr_t *receiver);
 
-/**
- * @brief Last sent collect message.
- */
-static struct collect_msg_t last_sent_collect_message;
-
 /* --- COMMAND MESSAGE--- */
 /**
  * @brief Command message receive callback.
@@ -514,14 +509,6 @@ static bool send_collect_message(const struct collect_msg_t *collect_msg,
   packetbuf_clear();
   packetbuf_copyfrom(collect_msg, sizeof(struct collect_msg_t));
 
-  /* Save as last collect message sent */
-  last_sent_collect_message.event_seqn = collect_msg->event_seqn;
-  linkaddr_copy(&last_sent_collect_message.event_source,
-                &collect_msg->event_source);
-  linkaddr_copy(&last_sent_collect_message.sender, &collect_msg->sender);
-  last_sent_collect_message.value = collect_msg->value;
-  last_sent_collect_message.threshold = collect_msg->threshold;
-
   /* Send collect message in unicast to receiver node */
   const bool ret = connection_unicast_send(UNICAST_MSG_TYPE_COLLECT, receiver);
   if (!ret)
@@ -696,26 +683,9 @@ static void uc_recv(const struct unicast_hdr_t *header,
 static void uc_sent(int status, int num_tx) {
   if (status != MAC_TX_OK) {
     /* ERROR */
-    /* Collect message */
-    if (!linkaddr_cmp(&last_sent_collect_message.sender, &linkaddr_null)) {
-      /* Last is a collect message */
-      LOG_WARN("Retrying sending last collect message due to error %d", status);
-      /* Retry */
-      send_collect_message(&last_sent_collect_message,
-                           &connection_get_conn()->parent_node);
-    }
-
-    /* TODO Remove forwarding entry if command error */
-
-    return;
+    LOG_INFO(":(");
+  } else {
+    /* SUCCESS */
+    LOG_INFO(":)");
   }
-
-  /* SUCCESS */
-  /* Collect message */
-  if (!linkaddr_cmp(&last_sent_collect_message.sender, &linkaddr_null)) {
-    linkaddr_copy(&last_sent_collect_message.sender, &linkaddr_null);
-    LOG_DEBUG("Collect message sent");
-  }
-
-  return;
 }

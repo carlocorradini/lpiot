@@ -56,8 +56,10 @@ static void reset_connections_idx(size_t index);
 /**
  * @brief Shift connections to right starting from index.
  * From parameter must be within the range of the array (0, length - 1).
+ * The from entry is resetted.
  * Example:
  * [1 2 3 FROM 5 6 7] -> [1 2 3 ? 4 5 6]
+ * The ? entry is resetted.
  *
  * @param from Start index to shift from.
  */
@@ -66,8 +68,10 @@ static void shift_right_connections(size_t from);
 /**
  * @brief Shift connections to left starting from index.
  * From parameter must be within the range of the array (0, length - 1).
+ * The last entry is resetted.
  * Example:
  * [1 2 3 FROM 5 6 7] -> [1 2 3 5 6 7 ?]
+ * The ? entry is resetted.
  *
  * @param from Start index to shift from.
  */
@@ -157,14 +161,17 @@ void beacon_recv_cb(const struct broadcast_hdr_t *header,
          ++connection_index) {
       if ((beacon_msg.seqn == 0 &&
            beacon_msg.seqn < connections[connection_index].seqn) ||
-          beacon_msg.seqn > connections[connection_index].seqn)
+          beacon_msg.seqn > connections[connection_index].seqn) {
         break; /* Better -> New */
+      }
 
-      if (beacon_msg.hopn + 1 > connections[connection_index].hopn)
+      if (beacon_msg.hopn + 1 > connections[connection_index].hopn) {
         continue; /* Worse -> Far */
+      }
       if (beacon_msg.hopn + 1 == connections[connection_index].hopn &&
-          rssi <= connections[connection_index].rssi)
+          rssi <= connections[connection_index].rssi) {
         continue; /* Worse -> Weak */
+      }
 
       /* Better -> Near or Strong */
       break;
@@ -175,11 +182,15 @@ void beacon_recv_cb(const struct broadcast_hdr_t *header,
   }
 
   /* Remove (possible) duplicate parent node */
-  for (i = 0; i < CONNECTION_BEACON_MAX_CONNECTIONS; ++i) {
-    if (!linkaddr_cmp(&connections[i].parent_node, sender)) continue;
-    shift_left_connections(i);
-    LOG_DEBUG("Removed duplicate parent node %02x:%02x", sender->u8[0],
-              sender->u8[1]);
+  i = 0;
+  while (i < CONNECTION_BEACON_MAX_CONNECTIONS) {
+    if (linkaddr_cmp(&connections[i].parent_node, sender)) {
+      shift_left_connections(i);
+      LOG_DEBUG("Removed duplicate parent node %02x:%02x", sender->u8[0],
+                sender->u8[1]);
+    } else {
+      ++i;
+    }
   }
 
   /* Right shift connections to accomodate better ith connection */

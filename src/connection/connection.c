@@ -5,6 +5,7 @@
 #include <net/rime/unicast.h>
 
 #include "beacon/beacon.h"
+#include "connection/uc_buffer.h"
 #include "logger/logger.h"
 #include "node/node.h"
 
@@ -60,11 +61,12 @@ static struct unicast_conn uc_conn;
 /**
  * @brief Send a unicast message to receiver address.
  *
+ * @param type Message type.
  * @param receiver Receiver address.
  * @return true Message sent.
  * @return false Message not sent due to an error.
  */
-static bool uc_send(const linkaddr_t *receiver);
+static bool uc_send(enum unicast_msg_type_t type, const linkaddr_t *receiver);
 
 /**
  * @brief Unicast receive callback.
@@ -94,6 +96,9 @@ void connection_open(uint16_t channel,
                      const struct connection_callbacks_t *callbacks) {
   cb = callbacks;
 
+  /* Initialize unicast buffer */
+  uc_buffer_init();
+
   /* Open the underlying rime primitives */
   broadcast_open(&bc_conn, channel, &bc_cb);
   unicast_open(&uc_conn, channel + 1, &uc_cb);
@@ -103,6 +108,9 @@ void connection_open(uint16_t channel,
 }
 
 void connection_close(void) {
+  /* Terminate unicast buffer */
+  uc_buffer_terminate();
+
   /* Close the underlying rime primitives */
   broadcast_close(&bc_conn);
   unicast_close(&uc_conn);
@@ -191,28 +199,9 @@ static void bc_sent_cb(struct broadcast_conn *bc_conn, int status, int num_tx) {
 }
 
 /* --- UNICAST --- */
-static bool uc_send(const linkaddr_t *receiver) {
-  const int ret = unicast_send(&uc_conn, receiver);
-
-  if (!ret)
-    LOG_ERROR("Error sending unicast message to %02x:%02x", receiver->u8[0],
-              receiver->u8[1]);
-  else
-    LOG_DEBUG("Sending unicast message to %02x:%02x", receiver->u8[0],
-              receiver->u8[1]);
-  return ret;
-}
-
-bool connection_unicast_send(enum unicast_msg_type_t type,
-                             const linkaddr_t *receiver) {
+static bool uc_send(enum unicast_msg_type_t type, const linkaddr_t *receiver) {
   /* Prepare unicast header */
   const struct unicast_hdr_t uc_header = {.type = type};
-
-  /* Check connection */
-  if (node_get_role() != NODE_ROLE_CONTROLLER && !connection_is_connected()) {
-    LOG_WARN("Error sending unicast message: No connection available");
-    return false;
-  }
 
   /* Allocate header space */
   if (!packetbuf_hdralloc(sizeof(uc_header))) {
@@ -225,7 +214,44 @@ bool connection_unicast_send(enum unicast_msg_type_t type,
   memcpy(packetbuf_hdrptr(), &uc_header, sizeof(uc_header));
 
   /* Send */
-  return uc_send(receiver);
+  const bool ret = unicast_send(&uc_conn, receiver);
+  if (!ret)
+    LOG_ERROR("Error sending unicast message to %02x:%02x", receiver->u8[0],
+              receiver->u8[1]);
+  else
+    LOG_DEBUG("Sending unicast message to %02x:%02x", receiver->u8[0],
+              receiver->u8[1]);
+  return ret;
+}
+
+bool connection_unicast_send(enum unicast_msg_type_t type,
+                             const linkaddr_t *receiver) {
+  /* Check if null address */
+  if (linkaddr_cmp(receiver, &linkaddr_null)) {
+    LOG_WARN("Unable to send unicast message to NULL address: %02x:%02x",
+             receiver->u8[0], receiver->u8[1]);
+    return false;
+  }
+
+  /* Check connection only if receiver is parent node */
+  if (linkaddr_cmp(receiver, &connection_get_conn()->parent_node) &&
+      !connection_is_connected()) {
+    LOG_WARN("Error sending unicast message: No connection available");
+    return false;
+  }
+
+  /* Add to buffer */
+  if (!uc_buffer_add(type, receiver)) {
+    LOG_ERROR(
+        "Unicast buffer is full, message of type %d to %02x:%02x not sent",
+        type, receiver->u8[0], receiver->u8[1]);
+    return false;
+  }
+
+  /* Start sending if first in buffer */
+  if (uc_buffer_length() - 1 == 0) return uc_send(type, receiver);
+
+  return true;
 }
 
 static void uc_recv_cb(struct unicast_conn *uc_conn, const linkaddr_t *sender) {
@@ -257,53 +283,80 @@ static void uc_recv_cb(struct unicast_conn *uc_conn, const linkaddr_t *sender) {
 static void uc_sent_cb(struct unicast_conn *uc_conn, int status, int num_tx) {
   /* Receiver address */
   const linkaddr_t *receiver = packetbuf_addr(PACKETBUF_ADDR_RECEIVER);
-  /* Current connection  */
-  const struct connection_t *conn = connection_get_conn();
 
   /* Check if null address */
   if (linkaddr_cmp(receiver, &linkaddr_null)) {
     LOG_WARN("Unicast message sent to NULL address %02x:%02x", receiver->u8[0],
              receiver->u8[1]);
-    goto callback;
-  }
-
-  if (status != MAC_TX_OK) {
+  } else if (status != MAC_TX_OK) {
     /* Something bad happended */
     LOG_ERROR("Error sending unicast message to %02x:%02x on tx %d due to %d",
               receiver->u8[0], receiver->u8[1], num_tx, status);
+    /* Current connection  */
+    const struct connection_t *conn = connection_get_conn();
 
-    /* Ignore backup if receiver is not parent node */
-    if (!linkaddr_cmp(receiver, &conn->parent_node)) goto callback;
+    /* Ask buffer if can retry */
+    bool retry = uc_buffer_can_retry();
 
-    /* Invalidate current connection */
-    LOG_WARN(
-        "Invalidating connection: { parent_node: %02x:%02x, seqn: %u, "
-        "hopn: %u, rssi: %d }",
-        conn->parent_node.u8[0], conn->parent_node.u8[1], conn->seqn,
-        conn->hopn, conn->rssi);
-    beacon_invalidate_connection();
+    /* Backup parent connection if receiver is parent node */
+    if (linkaddr_cmp(receiver, &conn->parent_node)) {
+      /* Invalidate current connection */
+      LOG_WARN(
+          "Invalidating connection: "
+          "{ parent_node: %02x:%02x, seqn: %u, hopn: %u, rssi: %d }",
+          conn->parent_node.u8[0], conn->parent_node.u8[1], conn->seqn,
+          conn->hopn, conn->rssi);
+      beacon_invalidate_connection();
 
-    /* Check if backup connection is available */
-    if (!connection_is_connected()) {
-      LOG_WARN("Unavailable backup connection");
-      goto callback;
+      /* Check if backup connection is available */
+      if (!connection_is_connected()) {
+        LOG_WARN("Unavailable backup connection");
+        /* Don't retry (no parent) */
+        retry = false;
+      } else {
+        /* New connection */
+        const struct connection_t *new_conn = connection_get_conn();
+        LOG_INFO(
+            "Available backup connection: "
+            "{ parent_node: %02x:%02x, seqn: %u, hopn: %u, rssi: %d }",
+            new_conn->parent_node.u8[0], new_conn->parent_node.u8[1],
+            new_conn->seqn, new_conn->hopn, new_conn->rssi);
+        retry = true;
+      }
     }
 
-    /* New connection */
-    const struct connection_t *new_conn = connection_get_conn();
-    LOG_INFO(
-        "Available backup connection: { parent_node: %02x:%02x, seqn: %u, "
-        "hopn: %u, rssi: %d }",
-        new_conn->parent_node.u8[0], new_conn->parent_node.u8[1],
-        new_conn->seqn, new_conn->hopn, new_conn->rssi);
+    /* Check retry */
+    if (!retry) {
+      uc_buffer_fail();
+      LOG_WARN("Unable to retry sending last unicast message");
+    } else {
+      LOG_INFO("Retrying sending last unicast message");
+    }
   } else {
     /* Message sent successfully */
     LOG_DEBUG("Sent unicast message to %02x:%02x", receiver->u8[0],
               receiver->u8[1]);
+    /* Inform buffer */
+    uc_buffer_success();
   }
 
-  goto callback;
+  /* Send message in buffer (if any) */
+  if (uc_buffer_can_retry()) {
+    /* Obtain buffered message */
+    const struct uc_buffer_t *message = uc_buffer_retry();
 
-callback:
+    LOG_INFO(
+        "Sending buffered unicast message: "
+        "{ receiver: %02x:%02x, type: %d, retry_left: %u }",
+        message->receiver.u8[0], message->receiver.u8[1], message->msg_type,
+        message->num_retry_left);
+
+    /* Prepare packetbuf */
+    packetbuf_clear();
+    packetbuf_copyfrom(message->data, message->data_len);
+    uc_send(message->msg_type, &message->receiver);
+    return;
+  }
+
   if (cb->uc.sent != NULL) cb->uc.sent(status, num_tx);
 }
