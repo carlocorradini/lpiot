@@ -43,6 +43,8 @@ enum log_level_t {
   LOG_LEVEL_ERROR,
   /* Fatal level. */
   LOG_LEVEL_FATAL,
+  /* Disable logging. */
+  LOG_LEVEL_DISABLED,
 };
 
 /**
