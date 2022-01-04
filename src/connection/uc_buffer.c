@@ -1,5 +1,6 @@
 #include "uc_buffer.h"
 
+#include "config/config.h"
 #include "logger/logger.h"
 
 static struct uc_buffer_t buffer[CONNECTION_UC_BUFFER_SIZE];
@@ -57,7 +58,7 @@ bool uc_buffer_add(enum unicast_msg_type_t type, const linkaddr_t *receiver) {
   buffer[i].msg_type = type;
   packetbuf_copyto(buffer[i].data);
   buffer[i].data_len = packetbuf_datalen();
-  buffer[i].num_retry_left = CONNECTION_UC_MAX_RETRY;
+  buffer[i].num_retry_left = CONNECTION_UC_BUFFER_MAX_RETRY;
 
   return true;
 }

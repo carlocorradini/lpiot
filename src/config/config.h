@@ -44,6 +44,18 @@
  */
 #define CONNECTION_BEACON_FORWARD_DELAY (random_rand() % CLOCK_SECOND)
 
+/**
+ * @brief Unicast buffer size.
+ * The maximum number of unicast messages that the buffer could store.
+ */
+#define CONNECTION_UC_BUFFER_SIZE (3)
+
+/**
+ * @brief Maximum number of retry attempt(s) when a message has failed to be
+ * sent.
+ */
+#define CONNECTION_UC_BUFFER_MAX_RETRY (1)
+
 /* --- ETC --- */
 /**
  * @brief Time to wait before sending an event message.

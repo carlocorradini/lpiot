@@ -1,5 +1,5 @@
-#ifndef _UC_BUFFER_
-#define _UC_BUFFER_
+#ifndef _CONNECTION_UC_BUFFER_
+#define _CONNECTION_UC_BUFFER_
 
 #include <net/linkaddr.h>
 #include <net/packetbuf.h>
@@ -7,9 +7,6 @@
 #include <sys/types.h>
 
 #include "connection/connection.h"
-
-#define CONNECTION_UC_BUFFER_SIZE 3
-#define CONNECTION_UC_MAX_RETRY 1
 
 /**
  * @brief Unicast buffer entry.
