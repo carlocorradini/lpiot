@@ -2,10 +2,9 @@
 CONTIKI_PROJECT = app
 
 # --- CONFIGURATION
-# Enable pedantic checks
-CHECKS ?= false
 # Enable debug
 DEBUG ?= false
+
 # - Contiki
 DEFINES = PROJECT_CONF_H=\"src/config/project_conf.h\"
 CONTIKI_WITH_RIME = 1
@@ -20,20 +19,12 @@ BOARD? = firefly
 LDFLAGS += -specs=nosys.specs
 endif
 endif
+
 # - CC
 # Debug flag
 ifeq ($(DEBUG), true)
 CFLAGS += -DDEBUG -g
 endif
-ifeq ($(CHECKS), true)
-# Warnings
-CFLAGS += -Wextra -Wall -pedantic -Wundef \
-		  -Wshadow -Wpointer-arith -Wcast-align -Wstrict-prototypes \
-		  -Wstrict-overflow=5 -Wwrite-strings -Wwrite-strings -Waggregate-return \
-		  -Wcast-qual -Wswitch-default -Wswitch-enum -Wconversion \
-		  -Wunreachable-code -Wfloat-equal
-endif
-
 
 # --- SOURCE FILES
 PROJECTDIRS += src \
