@@ -47,6 +47,7 @@ cleanall: distclean
 	rm -f symbols.c symbols.h
 	rm -f app.elf app.hex app.zoul
 	rm -rf obj_zoul
-	rm -f COOJA.log
+	rm -f COOJA.log COOJA.testlog
+	rm -f *_mrm*.csv *_mrm*.log
 
 include $(CONTIKI)/Makefile.include
