@@ -174,7 +174,7 @@ void beacon_recv_cb(const struct broadcast_hdr_t *header,
       return; /* Far or Weak */
   }
 
-  /* Remove (possible) duplicated parent node */
+  /* Remove (possible) duplicate parent node */
   for (i = 0; i < CONNECTION_BEACON_MAX_CONNECTIONS; ++i) {
     if (!linkaddr_cmp(&connections[i].parent_node, sender)) continue;
     shift_left_connections(i);
