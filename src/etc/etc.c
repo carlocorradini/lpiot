@@ -357,17 +357,17 @@ void event_msg_cb(const struct broadcast_hdr_t *header,
   struct event_msg_t event_msg;
   const enum node_role_t node_role = node_get_role();
 
-  /* Check received event message validity */
-  if (packetbuf_datalen() != sizeof(event_msg)) {
-    LOG_ERROR("Received event message wrong size: %u byte",
-              packetbuf_datalen());
-    return;
-  }
-
   /* Ignore if suppression is active */
   if (!ctimer_expired(&suppression_timer_new) ||
       !ctimer_expired(&suppression_timer_propagation)) {
     LOG_WARN("Event message propagation is suppressed");
+    return;
+  }
+
+  /* Check received event message validity */
+  if (packetbuf_datalen() != sizeof(event_msg)) {
+    LOG_ERROR("Received event message wrong size: %u byte",
+              packetbuf_datalen());
     return;
   }
 
