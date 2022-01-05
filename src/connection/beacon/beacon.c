@@ -96,9 +96,8 @@ void beacon_init(void) {
 }
 
 void beacon_terminate(void) {
-  /* FIXME I timer? */
-  /* Memoization o no? */
   reset_connections();
+  ctimer_stop(&beacon_timer);
 }
 
 const struct connection_t *beacon_get_conn(void) {

@@ -11,4 +11,9 @@
  */
 void sensor_init(size_t index);
 
+/**
+ * @brief Terminate Sensor/Actuator node.
+ */
+void sensor_terminate(void);
+
 #endif

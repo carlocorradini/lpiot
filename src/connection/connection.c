@@ -108,6 +108,8 @@ void connection_open(uint16_t channel,
 }
 
 void connection_close(void) {
+  cb = NULL;
+
   /* Terminate unicast buffer */
   uc_buffer_terminate();
 

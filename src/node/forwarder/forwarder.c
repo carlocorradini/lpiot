@@ -7,3 +7,5 @@ void forwarder_init(void) {
   /* Open ETC connection */
   etc_open(CONNECTION_CHANNEL, NULL);
 }
+
+void forwarder_terminate(void) {}
