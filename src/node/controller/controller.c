@@ -112,10 +112,18 @@ void controller_init(void) {
 }
 
 static void event_cb(uint16_t event_seqn, const linkaddr_t *event_source) {
-  /* TODO Maybe ignorare se il timer non e' scaduto */
   const struct etc_event_t *event = etc_get_current_event();
   struct sensor_reading_t *sensor_reading;
   size_t i;
+
+  /* Ignore if collect timer has not expired */
+  if (!ctimer_expired(&collect_timer)) {
+    LOG_WARN(
+        "Discarding event with source %02x:%02x because collect timer has not "
+        "expired",
+        event_source->u8[0], event_source->u8[1]);
+    return;
+  }
 
   /* Find sensor reading */
   for (i = 0; i < NUM_SENSORS; ++i) {
@@ -141,10 +149,9 @@ static void event_cb(uint16_t event_seqn, const linkaddr_t *event_source) {
   }
 
   /* Save event seqn */
-  /* TODO not sure */
   sensor_reading->seqn = event_seqn;
 
-  /* Clean possible old junk */
+  /* Reset sensor readings */
   num_sensor_readings = 0;
   for (i = 0; i < NUM_SENSORS; ++i) {
     sensor_readings[i].reading_available = false;
@@ -171,6 +178,14 @@ static void collect_cb(uint16_t event_seqn, const linkaddr_t *event_source,
   struct sensor_reading_t *sensor_reading = NULL;
   struct sensor_reading_t *event_sensor_reading = NULL;
   size_t i;
+
+  if (num_sensor_readings >= NUM_SENSORS) {
+    LOG_WARN(
+        "Ignoring collect event because reached maximum readings "
+        "(Duplicate or Old): { seqn: %u, source: %02x:%02x }",
+        event_seqn, event_source->u8[0], event_source->u8[1]);
+    return;
+  }
 
   /* Find sensor reading(s) */
   for (i = 0; i < NUM_SENSORS; ++i) {
@@ -265,8 +280,7 @@ static void collect_cb(uint16_t event_seqn, const linkaddr_t *event_source,
 }
 
 static void collect_timer_cb(void *ignored) {
-  /* All sensors data are collected
-   * or timer expired */
+  /* All data collected or timer expired */
 
   /* Actuate */
   actuation_logic();
@@ -430,12 +444,6 @@ static void actuation_commands(void) {
     }
   }
 
-  /* Reset */
-  num_sensor_readings = 0;
-  for (i = 0; i < NUM_SENSORS; ++i) {
-    sensor_reading = &sensor_readings[i];
-
-    sensor_reading->command = COMMAND_TYPE_NONE;
-    sensor_reading->reading_available = false;
-  }
+  /* Set sensor readings full until a new event is received */
+  num_sensor_readings = NUM_SENSORS;
 }

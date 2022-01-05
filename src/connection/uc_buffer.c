@@ -61,9 +61,16 @@ bool uc_buffer_add(enum unicast_msg_type_t type, const linkaddr_t *receiver) {
   buffer[i].msg_type = type;
   packetbuf_copyto(buffer[i].data);
   buffer[i].data_len = packetbuf_datalen();
-  buffer[i].num_retry_left = CONNECTION_UC_BUFFER_MAX_RETRY;
+  buffer[i].num_send = 0;
+  buffer[i].last_chance = false;
 
   return true;
+}
+
+void uc_buffer_remove() { shift_left(); }
+
+struct uc_buffer_t *uc_buffer_first(void) {
+  return &buffer[0];
 }
 
 size_t uc_buffer_length(void) {
@@ -78,30 +85,7 @@ size_t uc_buffer_length(void) {
   return length;
 }
 
-bool uc_bufffer_is_empty(void) { return uc_buffer_length() == 0; }
-
-void uc_buffer_fail(void) { shift_left(); }
-
-void uc_buffer_success(void) { shift_left(); }
-
-const struct uc_buffer_t *uc_buffer_retry(void) {
-  struct uc_buffer_t *buf = &buffer[0];
-
-  if (!uc_buffer_can_retry()) return NULL;
-
-  buf->num_retry_left -= 1;
-
-  if (buf->msg_type == UNICAST_MSG_TYPE_COLLECT) {
-    buf->num_retry_left += 1;
-    linkaddr_copy(&buf->receiver, &connection_get_conn()->parent_node);
-  }
-
-  return &buffer[0];
-}
-
-bool uc_buffer_can_retry(void) {
-  return !buffer[0].free && buffer[0].num_retry_left > 0;
-}
+bool uc_bufffer_is_empty(void) { return buffer[0].free; }
 
 /* --- RESET --- */
 static void reset_idx(size_t index) {
@@ -125,7 +109,8 @@ static void shift_left(void) {
     buffer[i].msg_type = buffer[i + 1].msg_type;
     memcpy(buffer[i].data, buffer[i + 1].data, buffer[i + 1].data_len);
     buffer[i].data_len = buffer[i + 1].data_len;
-    buffer[i].num_retry_left = buffer[i + 1].num_retry_left;
+    buffer[i].num_send = buffer[i + 1].num_send;
+    buffer[i].last_chance = buffer[i + 1].last_chance;
   }
 
   reset_idx(i);

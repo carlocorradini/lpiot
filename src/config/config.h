@@ -17,45 +17,6 @@
 #define LOGGER_LEVEL LOG_LEVEL_DISABLED
 #endif
 
-/* --- CONNECTION --- */
-/**
- * @brief Channel(s) on which the connection will operate.
- */
-#define CONNECTION_CHANNEL (0xAA)
-
-/**
- * @brief RSSI threshold.
- */
-#define CONNECTION_RSSI_THRESHOLD (-95)
-
-/**
- * @brief Maximum number of connections to store
- */
-#define CONNECTION_BEACON_MAX_CONNECTIONS (3)
-
-/**
- * @brief Interval to (re)create the connections tree.
- * Valid only if the node is a Controller.
- */
-#define CONNECTION_BEACON_INTERVAL (CLOCK_SECOND * 30)
-
-/**
- * @brief Time to wait before sending a beacon message.
- */
-#define CONNECTION_BEACON_FORWARD_DELAY (random_rand() % CLOCK_SECOND)
-
-/**
- * @brief Unicast buffer size.
- * The maximum number of unicast messages that the buffer could store.
- */
-#define CONNECTION_UC_BUFFER_SIZE (3)
-
-/**
- * @brief Maximum number of retry attempt(s) when a message has failed to be
- * sent.
- */
-#define CONNECTION_UC_BUFFER_MAX_RETRY (1)
-
 /* --- ETC --- */
 /**
  * @brief Time to wait before sending an event message.
@@ -136,5 +97,44 @@ extern const linkaddr_t SENSORS[NUM_SENSORS];
  * @brief Initial sensed value step.
  */
 #define SENSOR_INITIAL_VALUE (1000)
+
+/* --- CONNECTION --- */
+/**
+ * @brief Channel(s) on which the connection will operate.
+ */
+#define CONNECTION_CHANNEL (0xAA)
+
+/**
+ * @brief RSSI threshold.
+ */
+#define CONNECTION_RSSI_THRESHOLD (-95)
+
+/**
+ * @brief Maximum number of connections to store
+ */
+#define CONNECTION_BEACON_MAX_CONNECTIONS (3)
+
+/**
+ * @brief Interval to (re)create the connections tree.
+ * Valid only if the node is a Controller.
+ */
+#define CONNECTION_BEACON_INTERVAL (CLOCK_SECOND * 30)
+
+/**
+ * @brief Time to wait before sending a beacon message.
+ */
+#define CONNECTION_BEACON_FORWARD_DELAY (random_rand() % CLOCK_SECOND)
+
+/**
+ * @brief Unicast buffer size.
+ * The maximum number of unicast messages that the buffer could store.
+ * A good value is the number of Sensor nodes available.
+ */
+#define CONNECTION_UC_BUFFER_SIZE (NUM_SENSORS)
+
+/**
+ * @brief Maximum number of send attempts for a packet in the buffer.
+ */
+#define CONNECTION_UC_BUFFER_MAX_SEND (1)
 
 #endif
