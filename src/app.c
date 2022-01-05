@@ -30,8 +30,12 @@ PROCESS_THREAD(app_process, ev, data) {
          linkaddr_node_addr.u8[1]);
 #endif
 
+  static enum node_role_t node_role;
+  static bool terminated;
+
   while (true) {
-    const enum node_role_t node_role = node_get_role();
+    node_role = node_get_role();
+    terminated = false;
 
     if (node_role == NODE_ROLE_CONTROLLER) {
       controller_init();
@@ -67,18 +71,30 @@ PROCESS_THREAD(app_process, ev, data) {
 #ifdef STATS
     printf("App: Simulating node failure\n");
 #endif
-    etc_close();
-    NETSTACK_MAC.off(false);
-    leds_on(LEDS_RED);
+    if (node_role == NODE_ROLE_SENSOR_ACTUATOR) {
+      sensor_terminate();
+      terminated = true;
+    } else if (node_role == NODE_ROLE_FORWARDER) {
+      forwarder_terminate();
+      terminated = true;
+    } else {
+      LOG_FATAL("Could not terminate this node");
+    }
+    if (terminated) {
+      NETSTACK_MAC.off(false);
+      leds_on(LEDS_RED);
+    }
 
     /* Wait button press | Node failure recovery */
-    PROCESS_WAIT_EVENT_UNTIL(ev == sensors_event);
-    LOG_WARN("Simulating node recovery");
+    if (terminated) {
+      PROCESS_WAIT_EVENT_UNTIL(ev == sensors_event);
+      LOG_WARN("Simulating node recovery");
 #ifdef STATS
-    printf("App: Simulating node recovery\n");
+      printf("App: Simulating node recovery\n");
 #endif
-    NETSTACK_MAC.on();
-    leds_off(LEDS_RED);
+      NETSTACK_MAC.on();
+      leds_off(LEDS_RED);
+    }
   }
 
   PROCESS_END();

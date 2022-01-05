@@ -6,4 +6,9 @@
  */
 void forwarder_init(void);
 
+/**
+ * @brief Terminate Forwarder node.
+ */
+void forwarder_terminate(void);
+
 #endif

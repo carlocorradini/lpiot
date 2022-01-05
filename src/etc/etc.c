@@ -231,12 +231,16 @@ static struct connection_callbacks_t conn_cb = {
 void etc_open(uint16_t channel, const struct etc_callbacks_t *callbacks) {
   cb = callbacks;
 
-  /* Initialize event */
-  sensor_event_seqn = 0;
+  /* Event */
   event.seqn = 0;
   linkaddr_copy(&event.source, &linkaddr_null);
 
-  /* Initialize forwardings */
+  /* Sensor */
+  sensor_event_seqn = 0;
+  sensor_value = 0;
+  sensor_threshold = 0;
+
+  /* Forwardings */
   size_t i;
   for (i = 0; i < NUM_SENSORS; ++i) {
     linkaddr_copy(&forwardings[i].sensor, &SENSORS[i]);
@@ -248,14 +252,30 @@ void etc_open(uint16_t channel, const struct etc_callbacks_t *callbacks) {
 }
 
 void etc_close(void) {
-  /* Reset */
   cb = NULL;
+
+  /* Event */
+  sensor_event_seqn = 0;
   event.seqn = 0;
   linkaddr_copy(&event.source, &linkaddr_null);
+
+  /* Sensor */
   sensor_value = 0;
   sensor_threshold = 0;
 
-  /* TODO Timer! */
+  /* Forwardings */
+  size_t i;
+  for (i = 0; i < NUM_SENSORS; ++i) {
+    linkaddr_copy(&forwardings[i].sensor, &linkaddr_null);
+    linkaddr_copy(&forwardings[i].next_hop, &linkaddr_null);
+  }
+
+  /* Timers */
+  ctimer_stop(&suppression_timer_new);
+  ctimer_stop(&suppression_timer_propagation);
+  ctimer_stop(&suppression_timer_propagation_end);
+  ctimer_stop(&event_timer);
+  ctimer_stop(&collect_timer);
 
   /* Close connection */
   connection_close();
