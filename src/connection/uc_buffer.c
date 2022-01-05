@@ -3,6 +3,9 @@
 #include "config/config.h"
 #include "logger/logger.h"
 
+/**
+ * @brief Buffer.
+ */
 static struct uc_buffer_t buffer[CONNECTION_UC_BUFFER_SIZE];
 
 /**
