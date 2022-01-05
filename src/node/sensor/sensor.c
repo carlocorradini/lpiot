@@ -21,6 +21,20 @@ static uint32_t sensor_threshold;
 static struct ctimer sensor_timer;
 
 /**
+ * @brief Last command message received.
+ */
+static struct {
+  /* Even sequence number */
+  uint16_t event_seqn;
+  /* Event source */
+  linkaddr_t event_source;
+  /* Command type. */
+  enum command_type_t type;
+  /* Command threshold. */
+  uint32_t threshold;
+} last_command;
+
+/**
  * @brief Periodic function to update the sensed value (and trigger events).
  *
  * @param ignored
@@ -46,19 +60,24 @@ static const struct etc_callbacks_t etc_cb = {
     .event_cb = NULL, .collect_cb = NULL, .command_cb = command_cb};
 
 void sensor_init(size_t index) {
+  /* Data */
   sensor_value = SENSOR_INITIAL_VALUE * index;
   sensor_threshold = CONTROLLER_MAX_DIFF;
-
+  /* Last command */
+  last_command.type = COMMAND_TYPE_NONE;
   /* Periodic update of the sensed value */
   ctimer_set(&sensor_timer, SENSOR_UPDATE_INTERVAL, sensor_timer_cb, NULL);
-
   /* Open ETC connection */
   etc_open(CONNECTION_CHANNEL, &etc_cb);
 }
 
 void sensor_terminate(void) {
+  /* Data */
   sensor_value = 0;
   sensor_threshold = 0;
+  /* Last command */
+  last_command.type = COMMAND_TYPE_NONE;
+  /* Timer */
   ctimer_stop(&sensor_timer);
   /* Close ETC connection */
   etc_close();
@@ -101,6 +120,19 @@ static void sensor_timer_cb(void *ignored) {
 
 static void command_cb(uint16_t event_seqn, const linkaddr_t *event_source,
                        enum command_type_t command, uint32_t threshold) {
+  /* Check if received duplicated command */
+  if (last_command.event_seqn == event_seqn &&
+      linkaddr_cmp(&last_command.event_source, event_source) &&
+      last_command.type == command && last_command.threshold == threshold) {
+    LOG_WARN(
+        "Duplicated command: "
+        "{ command: %d, threshold: %lu, "
+        "event_seqn: %u, event_source: %02x:%02x }: ",
+        command, threshold, event_seqn, event_source->u8[0],
+        event_source->u8[1]);
+    return;
+  }
+
   LOG_INFO(
       "Command: "
       "{ command: %d, threshold: %lu, "
@@ -138,4 +170,10 @@ static void command_cb(uint16_t event_seqn, const linkaddr_t *event_source,
       break;
     }
   }
+
+  /* Update last command */
+  last_command.event_seqn = event_seqn;
+  linkaddr_copy(&last_command.event_source, event_source);
+  last_command.type == command;
+  last_command.threshold == threshold;
 }
