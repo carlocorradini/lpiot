@@ -330,6 +330,7 @@ static void uc_sent_cb(struct unicast_conn *uc_conn, int status, int num_tx) {
 
     /* Check retry */
     if (!retry) {
+      /* Inform buffer */
       uc_buffer_fail();
       LOG_WARN("Unable to resend last unicast message");
     } else {

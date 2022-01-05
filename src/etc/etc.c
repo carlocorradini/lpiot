@@ -703,9 +703,9 @@ static void uc_recv(const struct unicast_hdr_t *header,
 static void uc_sent(int status, int num_tx) {
   if (status != MAC_TX_OK) {
     /* ERROR */
-    LOG_ERROR(":(");
+    LOG_ERROR("Unicast message not sent due to %d", status);
   } else {
     /* SUCCESS */
-    LOG_INFO(":)");
+    LOG_INFO("Unicast message sent");
   }
 }
