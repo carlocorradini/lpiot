@@ -56,14 +56,6 @@ void sensor_init(size_t index) {
   etc_open(CONNECTION_CHANNEL, &etc_cb);
 }
 
-void sensor_terminate(void) {
-  sensor_value = 0;
-  sensor_threshold = 0;
-  ctimer_stop(&sensor_timer);
-  /* Close ETC connection */
-  etc_close();
-}
-
 static void sensor_timer_cb(void *ignored) {
   /* Increase sensor value */
   sensor_value += SENSOR_UPDATE_INCREMENT;

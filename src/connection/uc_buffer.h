@@ -6,7 +6,7 @@
 #include <stdbool.h>
 #include <sys/types.h>
 
-#include "connection.h"
+#include "connection/connection.h"
 
 /**
  * @brief Unicast buffer entry.
@@ -78,7 +78,7 @@ void uc_buffer_success(void);
 
 /**
  * @brief Return first message to be (re)sent.
- * Note that calling this function change the internal state of the buffer so
+ * Note that calling this fucntion change the internal state of the buffer so
  * the message should be sent.
  * If no buffered message available return NULL.
  *

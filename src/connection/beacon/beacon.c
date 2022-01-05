@@ -96,8 +96,9 @@ void beacon_init(void) {
 }
 
 void beacon_terminate(void) {
+  /* FIXME I timer? */
+  /* Memoization o no? */
   reset_connections();
-  ctimer_stop(&beacon_timer);
 }
 
 const struct connection_t *beacon_get_conn(void) {
@@ -211,13 +212,12 @@ void beacon_recv_cb(const struct broadcast_hdr_t *header,
     /* Schedule beacon message propagation only if best */
     ctimer_set(&beacon_timer, CONNECTION_BEACON_FORWARD_DELAY, beacon_timer_cb,
                NULL);
-  } else {
+  } else
     LOG_DEBUG("Backup parent %02x:%02x at %d: { hopn: %u, rssi: %d }",
               connections[connection_index].parent_node.u8[0],
               connections[connection_index].parent_node.u8[1], connection_index,
               connections[connection_index].hopn,
               connections[connection_index].rssi);
-  }
 }
 
 static void beacon_timer_cb(void *ignored) {

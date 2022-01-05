@@ -202,7 +202,7 @@ static void collect_cb(uint16_t event_seqn, const linkaddr_t *event_source,
     return;
   }
 
-  /* Check if collect's event is handled */
+  /* Check if collect's event is not handled */
   if (event_seqn != event->seqn ||
       !linkaddr_cmp(event_source, &event->source)) {
     LOG_WARN(
