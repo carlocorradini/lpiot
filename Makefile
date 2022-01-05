@@ -34,7 +34,7 @@ PROJECTDIRS += src \
 			   src/tool
 PROJECT_SOURCEFILES += \
 					   config.c \
-					   connection.c uc_buffer.c beacon.c \
+					   connection.c forward.c uc_buffer.c beacon.c \
 					   etc.c \
 					   logger.c \
 					   node.c controller.c forwarder.c sensor.c

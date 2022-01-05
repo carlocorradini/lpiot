@@ -174,6 +174,6 @@ static void command_cb(uint16_t event_seqn, const linkaddr_t *event_source,
   /* Update last command */
   last_command.event_seqn = event_seqn;
   linkaddr_copy(&last_command.event_source, event_source);
-  last_command.type == command;
-  last_command.threshold == threshold;
+  last_command.type = command;
+  last_command.threshold = threshold;
 }

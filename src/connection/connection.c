@@ -7,6 +7,7 @@
 #include "beacon/beacon.h"
 #include "config/config.h"
 #include "connection/uc_buffer.h"
+#include "forward.h"
 #include "logger/logger.h"
 #include "node/node.h"
 
@@ -101,6 +102,9 @@ void connection_open(uint16_t channel,
   /* Initialize unicast buffer */
   uc_buffer_init();
 
+  /* Initialize forward structure */
+  forward_init();
+
   /* Open the underlying rime primitives */
   broadcast_open(&bc_conn, channel, &bc_cb);
   unicast_open(&uc_conn, channel + 1, &uc_cb);
@@ -114,6 +118,9 @@ void connection_close(void) {
 
   /* Terminate unicast buffer */
   uc_buffer_terminate();
+
+  /* Terminate forward structure */
+  forward_terminate();
 
   /* Close the underlying rime primitives */
   broadcast_close(&bc_conn);

@@ -137,4 +137,9 @@ extern const linkaddr_t SENSORS[NUM_SENSORS];
  */
 #define CONNECTION_UC_BUFFER_MAX_SEND (1)
 
+/**
+ * @brief Maximum number of hops in forwarding structure.
+ */
+#define CONNECTION_FORWARD_MAX_SIZE (3)
+
 #endif

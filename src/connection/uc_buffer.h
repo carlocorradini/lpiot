@@ -1,5 +1,5 @@
-#ifndef _CONNECTION_UC_BUFFER_
-#define _CONNECTION_UC_BUFFER_
+#ifndef _CONNECTION_UC_BUFFER_H_
+#define _CONNECTION_UC_BUFFER_H_
 
 #include <net/linkaddr.h>
 #include <net/packetbuf.h>
