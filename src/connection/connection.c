@@ -23,10 +23,11 @@ static struct broadcast_conn bc_conn;
 /**
  * @brief Send a broadcast message.
  *
+ * @param type Message type.
  * @return true Message sent.
  * @return false Message not sent due to an error.
  */
-static bool bc_send(void);
+static bool bc_send(enum broadcast_msg_type_t type);
 
 /**
  * @brief Broadcast receive callback.
@@ -130,17 +131,7 @@ const struct connection_t *connection_get_conn(void) {
 }
 
 /* --- BROADCAST --- */
-static bool bc_send(void) {
-  const bool ret = broadcast_send(&bc_conn);
-
-  if (!ret)
-    LOG_ERROR("Error sending broadcast message");
-  else
-    LOG_DEBUG("Sending broadcast message");
-  return ret;
-}
-
-bool connection_broadcast_send(enum broadcast_msg_type_t type) {
+static bool bc_send(enum broadcast_msg_type_t type) {
   /* Prepare broadcast header */
   const struct broadcast_hdr_t bc_header = {.type = type};
 
@@ -155,7 +146,17 @@ bool connection_broadcast_send(enum broadcast_msg_type_t type) {
   memcpy(packetbuf_hdrptr(), &bc_header, sizeof(bc_header));
 
   /* Send */
-  return bc_send();
+  const bool ret = broadcast_send(&bc_conn);
+  if (!ret)
+    LOG_ERROR("Error sending broadcast message");
+  else
+    LOG_DEBUG("Sending broadcast message");
+  return ret;
+}
+
+bool connection_broadcast_send(enum broadcast_msg_type_t type) {
+  /* Send */
+  return bc_send(type);
 }
 
 static void bc_recv_cb(struct broadcast_conn *bc_conn,
@@ -330,9 +331,9 @@ static void uc_sent_cb(struct unicast_conn *uc_conn, int status, int num_tx) {
     /* Check retry */
     if (!retry) {
       uc_buffer_fail();
-      LOG_WARN("Unable to retry sending last unicast message");
+      LOG_WARN("Unable to resend last unicast message");
     } else {
-      LOG_INFO("Retrying sending last unicast message");
+      LOG_INFO("Resending last unicast message");
     }
   } else {
     /* Message sent successfully */
