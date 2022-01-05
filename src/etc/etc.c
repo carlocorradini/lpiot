@@ -703,7 +703,7 @@ static void uc_recv(const struct unicast_hdr_t *header,
 static void uc_sent(int status, int num_tx) {
   if (status != MAC_TX_OK) {
     /* ERROR */
-    LOG_INFO(":(");
+    LOG_ERROR(":(");
   } else {
     /* SUCCESS */
     LOG_INFO(":)");
