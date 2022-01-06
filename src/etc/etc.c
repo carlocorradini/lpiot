@@ -139,12 +139,14 @@ static void collect_timer_cb(void *ignored);
  * @brief Send collect message to receiver node.
  * The final recipient of the collect must be the Controller node.
  *
+ * @param header Header.
  * @param collect_msg Collect message to send.
  * @param receiver Receiver node address.
  * @return true Collect message sent.
  * @return false Collect message not sent due to an error.
  */
-static bool send_collect_message(const struct collect_msg_t *collect_msg,
+static bool send_collect_message(const struct unicast_hdr_t *header,
+                                 const struct collect_msg_t *collect_msg,
                                  const linkaddr_t *receiver);
 
 /* --- COMMAND MESSAGE--- */
@@ -167,12 +169,14 @@ static void suppression_timer_propagation_end_cb(void *ignored);
 /**
  * @brief Send command message to receiver node.
  *
+ * @param header Header.
  * @param command_msg Command message to send.
  * @param receiver Receiver node address.
  * @return true Command message sent.
  * @return false Command message not sent due to an error.
  */
-static bool send_command_message(const struct command_msg_t *command_msg,
+static bool send_command_message(const struct unicast_hdr_t *header,
+                                 const struct command_msg_t *command_msg,
                                  const linkaddr_t *receiver);
 
 /* --- CONNECTION --- */
@@ -287,8 +291,14 @@ bool etc_trigger(uint32_t value, uint32_t threshold) {
 
 bool etc_command(const linkaddr_t *receiver, enum command_type_t command,
                  uint32_t threshold) {
+  struct unicast_hdr_t header;
   struct command_msg_t command_msg;
   struct forward_t *forward = forward_find(receiver);
+
+  /* Prepare header */
+  header.type = UNICAST_MSG_TYPE_COMMAND;
+  header.hops = 0;
+  linkaddr_copy(&header.final_receiver, receiver);
 
   /* Prepare command message */
   command_msg.event_seqn = event.seqn;
@@ -306,7 +316,7 @@ bool etc_command(const linkaddr_t *receiver, enum command_type_t command,
   }
 
   /* Send */
-  return send_command_message(&command_msg, &forward->hops[0]);
+  return send_command_message(&header, &command_msg, &forward->hops[0]);
 }
 
 /* --- EVENT MESSAGE --- */
@@ -435,8 +445,8 @@ static void collect_msg_cb(const struct unicast_hdr_t *header,
       }
 
       /* Forward collect message to parent node */
-      /* FIXME In forward non voglio riscrivere packetbuf */
-      send_collect_message(&collect_msg, &connection_get_conn()->parent_node);
+      send_collect_message(header, &collect_msg,
+                           &connection_get_conn()->parent_node);
       break;
     }
     case NODE_ROLE_CONTROLLER: {
@@ -453,6 +463,12 @@ static void collect_msg_cb(const struct unicast_hdr_t *header,
 }
 
 static void collect_timer_cb(void *ignored) {
+  /* Prepare header */
+  struct unicast_hdr_t header;
+  header.type = UNICAST_MSG_TYPE_COLLECT;
+  header.hops = 0;
+  linkaddr_copy(&header.final_receiver, &CONTROLLER);
+
   /* Prepare collect message */
   struct collect_msg_t collect_msg;
   collect_msg.event_seqn = event.seqn;
@@ -462,10 +478,12 @@ static void collect_timer_cb(void *ignored) {
   collect_msg.threshold = sensor_threshold;
 
   /* Send collect message */
-  send_collect_message(&collect_msg, &connection_get_conn()->parent_node);
+  send_collect_message(&header, &collect_msg,
+                       &connection_get_conn()->parent_node);
 }
 
-static bool send_collect_message(const struct collect_msg_t *collect_msg,
+static bool send_collect_message(const struct unicast_hdr_t *header,
+                                 const struct collect_msg_t *collect_msg,
                                  const linkaddr_t *receiver) {
   /* Check connection */
   if (!connection_is_connected()) {
@@ -480,8 +498,7 @@ static bool send_collect_message(const struct collect_msg_t *collect_msg,
   packetbuf_copyfrom(collect_msg, sizeof(struct collect_msg_t));
 
   /* Send collect message in unicast to receiver node */
-  const bool ret =
-      connection_unicast_send(UNICAST_MSG_TYPE_COLLECT, receiver, NULL);
+  const bool ret = connection_unicast_send(header, receiver);
   if (!ret)
     LOG_ERROR(
         "Error sending collect message to %02x:%02x: "
@@ -543,7 +560,7 @@ static void command_msg_cb(const struct unicast_hdr_t *header,
     }
 
     /* Forward to next hop node */
-    send_command_message(&command_msg, &forward->hops[0]);
+    send_command_message(header, &command_msg, &forward->hops[0]);
     return;
   }
 
@@ -563,7 +580,8 @@ static void suppression_timer_propagation_end_cb(void *ignored) {
   ctimer_stop(&suppression_timer_propagation);
 }
 
-static bool send_command_message(const struct command_msg_t *command_msg,
+static bool send_command_message(const struct unicast_hdr_t *header,
+                                 const struct command_msg_t *command_msg,
                                  const linkaddr_t *receiver) {
   /* Check connection */
   if (node_get_role() != NODE_ROLE_CONTROLLER && !connection_is_connected()) {
@@ -578,8 +596,7 @@ static bool send_command_message(const struct command_msg_t *command_msg,
   packetbuf_copyfrom(command_msg, sizeof(struct command_msg_t));
 
   /* Send command message in unicast to receiver node */
-  const bool ret = connection_unicast_send(UNICAST_MSG_TYPE_COMMAND, receiver,
-                                           &command_msg->receiver);
+  const bool ret = connection_unicast_send(header, receiver);
   if (!ret)
     LOG_ERROR(
         "Error sending command message to %02x:%02x: "

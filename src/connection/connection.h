@@ -59,6 +59,10 @@ enum unicast_msg_type_t {
 struct unicast_hdr_t {
   /* Type of message. */
   enum unicast_msg_type_t type;
+  /* Hop count. */
+  uint8_t hops;
+  /* Final receiver address. */
+  linkaddr_t final_receiver;
 } __attribute__((packed));
 
 /* --- CALLBACKS --- */
@@ -155,14 +159,12 @@ bool connection_broadcast_send(enum broadcast_msg_type_t type);
  * A header is added.
  * If no routing final_receiver should be NULL.
  *
- * @param type Message type.
+ * @param header Header.
  * @param receiver Receiver address.
- * @param final_receiver Final receiver address.
  * @return true Message sent.
  * @return false Message not sent due to an error.
  */
-bool connection_unicast_send(enum unicast_msg_type_t type,
-                             const linkaddr_t *receiver,
-                             const linkaddr_t *final_receiver);
+bool connection_unicast_send(const struct unicast_hdr_t *uc_header,
+                             const linkaddr_t *receiver);
 
 #endif

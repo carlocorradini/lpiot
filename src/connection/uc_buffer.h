@@ -15,12 +15,10 @@
 struct uc_buffer_t {
   /* Free entry flag. */
   bool free;
+  /* Header. */
+  struct unicast_hdr_t header;
   /* Receiver address. */
   linkaddr_t receiver;
-  /* Final receiver address. */
-  linkaddr_t final_receiver;
-  /* Message type. */
-  enum unicast_msg_type_t msg_type;
   /* Data in byte. */
   uint8_t data[PACKETBUF_SIZE];
   /* Data length in byte. */
@@ -46,14 +44,13 @@ void uc_buffer_terminate(void);
  * Note that if the buffer is full no entry could be added and false is
  * returned.
  *
- * @param type Message type.
+ * @param header Header.
  * @param receiver Receiver address.
- * @param final_receiver Final receiver address.
  * @return true Entry added.
  * @return false Entry not added.
  */
-bool uc_buffer_add(enum unicast_msg_type_t type, const linkaddr_t *receiver,
-                   const linkaddr_t *final_receiver);
+bool uc_buffer_add(const struct unicast_hdr_t *header,
+                   const linkaddr_t *receiver);
 
 /**
  * @brief Remove first entry in the unicast buffer.

@@ -110,6 +110,14 @@ extern const linkaddr_t SENSORS[NUM_SENSORS];
 #define CONNECTION_RSSI_THRESHOLD (-95)
 
 /**
+ * @brief Maximum number of hops a message could be forwarded.
+ * Defines the threshold on which a message is discarted if has been forwarded
+ * too many times. The value is inclusive.
+ * Mostly used to detect loops.
+ */
+#define CONNECTION_MAX_HOPS (16)
+
+/**
  * @brief Maximum number of connections to store
  */
 #define CONNECTION_BEACON_MAX_CONNECTIONS (3)

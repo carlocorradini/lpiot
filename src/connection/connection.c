@@ -72,12 +72,13 @@ static struct unicast_conn uc_conn;
 /**
  * @brief Send a unicast message to receiver address.
  *
- * @param type Message type.
+ * @param uc_header Header.
  * @param receiver Receiver address.
  * @return true Message sent.
  * @return false Message not sent due to an error.
  */
-static bool uc_send(enum unicast_msg_type_t type, const linkaddr_t *receiver);
+static bool uc_send(const struct unicast_hdr_t *uc_header,
+                    const linkaddr_t *receiver);
 
 /**
  * @brief Unicast receive callback.
@@ -257,40 +258,39 @@ static void bc_sent_cb(struct broadcast_conn *bc_conn, int status, int num_tx) {
 }
 
 /* --- UNICAST --- */
-static bool uc_send(enum unicast_msg_type_t type, const linkaddr_t *receiver) {
-  /* Prepare unicast header */
-  const struct unicast_hdr_t uc_header = {.type = type};
-
+static bool uc_send(const struct unicast_hdr_t *uc_header,
+                    const linkaddr_t *receiver) {
   /* Allocate header space */
-  if (!packetbuf_hdralloc(sizeof(uc_header))) {
+  if (!packetbuf_hdralloc(sizeof(struct unicast_hdr_t))) {
     /* Insufficient space */
     LOG_ERROR("Error allocating unicast header");
     return false;
   }
 
   /* Copy header */
-  memcpy(packetbuf_hdrptr(), &uc_header, sizeof(uc_header));
+  memcpy(packetbuf_hdrptr(), uc_header, sizeof(struct unicast_hdr_t));
 
   /* Send */
   const bool ret = unicast_send(&uc_conn, receiver);
 
   if (!ret) {
-    LOG_ERROR("Error sending unicast message to %02x:%02x", receiver->u8[0],
-              receiver->u8[1]);
+    LOG_ERROR(
+        "Error sending unicast message to %02x:%02x: { type: %d, hops: %u }",
+        receiver->u8[0], receiver->u8[1], uc_header->type, uc_header->hops);
     /* Remove message from buffer */
     uc_buffer_remove();
   } else {
-    LOG_DEBUG("Sending unicast message to %02x:%02x", receiver->u8[0],
-              receiver->u8[1]);
+    LOG_DEBUG("Sending unicast message to %02x:%02x: { type: %d, hops: %u }",
+              receiver->u8[0], receiver->u8[1], uc_header->type,
+              uc_header->hops);
     /* Increase send counter */
     uc_buffer_first()->num_send += 1;
   }
   return ret;
 }
 
-bool connection_unicast_send(enum unicast_msg_type_t type,
-                             const linkaddr_t *receiver,
-                             const linkaddr_t *final_receiver) {
+bool connection_unicast_send(const struct unicast_hdr_t *uc_header,
+                             const linkaddr_t *receiver) {
   /* Check if null address */
   if (linkaddr_cmp(receiver, &linkaddr_null)) {
     LOG_WARN("Unable to send unicast message: NULL address: %02x:%02x",
@@ -305,25 +305,16 @@ bool connection_unicast_send(enum unicast_msg_type_t type,
     return false;
   }
 
-  /* Check if final receiver is known */
-  if (final_receiver != NULL && forward_find(final_receiver) == NULL) {
-    LOG_WARN("Unable to send unicast message: Unknown final receiver %02x:%02x",
-             final_receiver->u8[0], final_receiver->u8[1]);
-    return false;
-  }
-
   /* Add to buffer */
-  if (!uc_buffer_add(
-          type, receiver,
-          final_receiver == NULL ? &linkaddr_null : final_receiver)) {
+  if (!uc_buffer_add(uc_header, receiver)) {
     LOG_ERROR(
         "Unicast buffer is full, message of type %d to %02x:%02x not sent",
-        type, receiver->u8[0], receiver->u8[1]);
+        uc_header->type, receiver->u8[0], receiver->u8[1]);
     return false;
   }
 
   /* Start sending if first in buffer */
-  if (uc_buffer_length() - 1 == 0) return uc_send(type, receiver);
+  if (uc_buffer_length() - 1 == 0) return uc_send(uc_header, receiver);
 
   return true;
 }
@@ -347,8 +338,20 @@ static void uc_recv_cb(struct unicast_conn *uc_conn, const linkaddr_t *sender) {
     return;
   }
 
-  LOG_DEBUG("Received unicast message from %02x:%02x of type %d", sender->u8[0],
-            sender->u8[1], uc_header.type);
+  /* Increase hop counter */
+  uc_header.hops += 1;
+
+  LOG_DEBUG("Received unicast message from %02x:%02x: { type: %d, hops: %d }",
+            sender->u8[0], sender->u8[1], uc_header.type, uc_header.hops);
+
+  /* Check hop counter */
+  if (uc_header.hops >= CONNECTION_MAX_HOPS) {
+    LOG_WARN(
+        "Received unicast message has reached the maximum number of hops "
+        "allowed: %u/%u",
+        uc_header.hops, CONNECTION_MAX_HOPS);
+    return;
+  }
 
   /* Forward to callback */
   if (cb->uc.recv != NULL) cb->uc.recv(&uc_header, sender);
@@ -408,7 +411,7 @@ static void uc_sent_cb(struct unicast_conn *uc_conn, int status, int num_tx) {
         }
       }
     } else if (!retry &&
-               !linkaddr_cmp(&message->final_receiver, &linkaddr_null)) {
+               !linkaddr_cmp(&message->header.final_receiver, &linkaddr_null)) {
       /* Backup forward hop */
 
       if (!message->last_chance) {
@@ -417,7 +420,8 @@ static void uc_sent_cb(struct unicast_conn *uc_conn, int status, int num_tx) {
         message->last_chance = true;
       } else {
         const struct forward_t *forward =
-            forward_find(&message->final_receiver);
+            forward_find(&message->header.final_receiver);
+
         if (forward != NULL &&
             !linkaddr_cmp(&forward->hops[0], &linkaddr_null)) {
           LOG_WARN("Invalidating hop %02x:%02x for sensor %02x:%02x",
@@ -425,10 +429,10 @@ static void uc_sent_cb(struct unicast_conn *uc_conn, int status, int num_tx) {
                    forward->sensor.u8[0], forward->sensor.u8[1]);
         }
         /* Remove broken forward for final receiver */
-        forward_remove(&message->final_receiver);
+        forward_remove(&message->header.final_receiver);
 
         const struct forward_t *new_forward =
-            forward_find(&message->final_receiver);
+            forward_find(&message->header.final_receiver);
         if (new_forward != NULL &&
             !linkaddr_cmp(&new_forward->hops[0], &linkaddr_null)) {
           LOG_INFO("Available backup hop %02x:%02x for sensor %02x:%02x",
@@ -442,8 +446,6 @@ static void uc_sent_cb(struct unicast_conn *uc_conn, int status, int num_tx) {
         /* Try with new hop or prepare to discovery */
         retry = true;
         message->num_send = CONNECTION_UC_BUFFER_MAX_SEND - 1;
-        /* FIXME */
-        message->last_chance = false;
       }
     }
 
@@ -477,7 +479,8 @@ static void uc_send_next(void) {
       LOG_WARN(
           "Buffered message could not be sent because has reached the maximum "
           "number of send: { receiver: %02x:%02x, type: %d }",
-          message->receiver.u8[0], message->receiver.u8[1], message->msg_type);
+          message->receiver.u8[0], message->receiver.u8[1],
+          message->header.type);
       /* Remove entry */
       uc_buffer_remove();
       /* Forward to callback */
@@ -485,7 +488,7 @@ static void uc_send_next(void) {
       continue;
     }
 
-    switch (message->msg_type) {
+    switch (message->header.type) {
       case UNICAST_MSG_TYPE_COLLECT: {
         /* If disconnected no collect message could be sent */
         if (!connection_is_connected()) {
@@ -493,7 +496,7 @@ static void uc_send_next(void) {
               "Node disconnected, buffered message could not be sent: "
               "{ receiver: %02x:%02x, type: %d }",
               message->receiver.u8[0], message->receiver.u8[1],
-              message->msg_type);
+              message->header.type);
           /* Remove entry */
           uc_buffer_remove();
           /* Forward to callback */
@@ -506,7 +509,7 @@ static void uc_send_next(void) {
       }
       case UNICAST_MSG_TYPE_COMMAND: {
         const struct forward_t *forward =
-            forward_find(&message->final_receiver);
+            forward_find(&message->header.final_receiver);
 
         /* If no available hop try to find one */
         if (linkaddr_cmp(&forward->hops[0], &linkaddr_null)) {
@@ -558,7 +561,7 @@ static void uc_send_next(void) {
     packetbuf_copyfrom(message->data, message->data_len);
 
     /* Send */
-    if (!uc_send(message->msg_type, &message->receiver)) {
+    if (!uc_send(&message->header, &message->receiver)) {
       LOG_ERROR("Error sending buffered mesage");
       /* Forward to callback */
       if (cb->uc.sent != NULL) cb->uc.sent(false);
@@ -567,7 +570,7 @@ static void uc_send_next(void) {
     LOG_INFO(
         "Sending buffered unicast message: "
         "{ receiver: %02x:%02x, type: %d, num_send: %u }",
-        message->receiver.u8[0], message->receiver.u8[1], message->msg_type,
+        message->receiver.u8[0], message->receiver.u8[1], message->header.type,
         message->num_send);
     break;
   }
@@ -644,7 +647,7 @@ static void forward_discovery_recv_cb(const struct broadcast_hdr_t *bc_header,
       }
 
       /* Sensor to find hop */
-      const linkaddr_t *sensor = &uc_buffer_first()->final_receiver;
+      const linkaddr_t *sensor = &uc_buffer_first()->header.final_receiver;
 
       /* Check request and response match */
       if (!linkaddr_cmp(sensor, &fd_msg.sensor)) {
@@ -657,6 +660,8 @@ static void forward_discovery_recv_cb(const struct broadcast_hdr_t *bc_header,
       }
 
       /* Add forward */
+      LOG_INFO("Forward response from %02x:%02x for sensor %02x:%02x",
+               sender->u8[0], sender->u8[1], sensor->u8[0], sensor->u8[1]);
       forward_add(sensor, sender);
       break;
     }
@@ -669,7 +674,7 @@ static void forward_discovery_recv_cb(const struct broadcast_hdr_t *bc_header,
 
 static void forward_discovery_timer_cb(void *ignored) {
   const struct forward_t *forward =
-      forward_find(&uc_buffer_first()->final_receiver);
+      forward_find(&uc_buffer_first()->header.final_receiver);
   const size_t hops_length = forward_hops_length(&forward->sensor);
 
   LOG_INFO("Forward discovery timer expired for sensor %02x:%02x",
