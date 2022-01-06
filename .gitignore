@@ -13,4 +13,5 @@
 /*.log
 /*.testlog
 /*_mrm*.csv
-last-test.txt
+/scenarios/testbed/last-test.txt
+/scenarios/testbed/job_*/

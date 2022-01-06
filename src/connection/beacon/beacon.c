@@ -187,6 +187,8 @@ void beacon_recv_cb(const struct broadcast_hdr_t *header,
       shift_left_connections(i);
       LOG_DEBUG("Removed duplicate parent node %02x:%02x", sender->u8[0],
                 sender->u8[1]);
+      /* Adjust connection index */
+      if (i < connection_index) connection_index -= 1;
     } else {
       ++i;
     }
