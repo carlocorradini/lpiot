@@ -150,7 +150,7 @@ void beacon_recv_cb(const struct broadcast_hdr_t *header,
       sender->u8[0], sender->u8[1], rssi, beacon_msg.seqn, beacon_msg.hopn);
 
   /* Analyze received beacon message */
-  if (rssi < CONNECTION_RSSI_THRESHOLD) return; /* Too Weak */
+  if (rssi <= CONNECTION_RSSI_THRESHOLD) return; /* Too Weak */
   if (beacon_msg.seqn != 0 && beacon_msg.seqn < connections[0].seqn)
     return; /* Old (Keep in mind seqn overflow) */
   if (beacon_msg.seqn == connections[0].seqn) {
