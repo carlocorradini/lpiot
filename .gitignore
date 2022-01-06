@@ -10,6 +10,7 @@
 /contiki-sky.a
 /contiki-sky.map
 /app-zoul.map
-*.log
-*.testlog
-*_mrm*.csv
+/*.log
+/*.testlog
+/*_mrm*.csv
+last-test.txt
