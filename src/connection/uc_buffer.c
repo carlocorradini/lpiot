@@ -35,7 +35,8 @@ void uc_buffer_init(void) { reset(); }
 
 void uc_buffer_terminate(void) { reset(); }
 
-bool uc_buffer_add(enum unicast_msg_type_t type, const linkaddr_t *receiver) {
+bool uc_buffer_add(enum unicast_msg_type_t type, const linkaddr_t *receiver,
+                   const linkaddr_t *final_receiver) {
   size_t i;
 
   /* Discard null receiver */
@@ -58,6 +59,7 @@ bool uc_buffer_add(enum unicast_msg_type_t type, const linkaddr_t *receiver) {
   /* Save */
   buffer[i].free = false;
   linkaddr_copy(&buffer[i].receiver, receiver);
+  linkaddr_copy(&buffer[i].final_receiver, final_receiver);
   buffer[i].msg_type = type;
   packetbuf_copyto(buffer[i].data);
   buffer[i].data_len = packetbuf_datalen();
@@ -106,6 +108,7 @@ static void shift_left(void) {
   for (i = 0; i < CONNECTION_UC_BUFFER_SIZE - 1; ++i) {
     buffer[i].free = buffer[i + 1].free;
     linkaddr_copy(&buffer[i].receiver, &buffer[i + 1].receiver);
+    linkaddr_copy(&buffer[i].final_receiver, &buffer[i + 1].final_receiver);
     buffer[i].msg_type = buffer[i + 1].msg_type;
     memcpy(buffer[i].data, buffer[i + 1].data, buffer[i + 1].data_len);
     buffer[i].data_len = buffer[i + 1].data_len;

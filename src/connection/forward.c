@@ -66,6 +66,36 @@ void forward_add(const linkaddr_t* sensor, const linkaddr_t* next_hop) {
   print_forwardings();
 }
 
+void forward_remove(const linkaddr_t* sensor) {
+  struct forward_t* f = forward_find(sensor);
+
+  if (f == NULL) return;
+
+  LOG_DEBUG("Removing hop %02x:%02x for sensor %02x:%02x", f->hops[0].u8[0],
+            f->hops[0].u8[1], sensor->u8[0], sensor->u8[1]);
+
+  /* Remove */
+  shift_left(f, 0);
+
+  /* Print */
+  print_forwardings();
+}
+
+size_t forward_hops_length(const linkaddr_t* sensor) {
+  struct forward_t* f = forward_find(sensor);
+  size_t i;
+  size_t length = 0;
+
+  if (f == NULL) return length;
+
+  for (i = 0; i < CONNECTION_FORWARD_MAX_SIZE; ++i) {
+    if (linkaddr_cmp(&f->hops[i], &linkaddr_null)) break;
+    length += 1;
+  }
+
+  return length;
+}
+
 /* --- RESET --- */
 static void reset(void) {
   size_t i;

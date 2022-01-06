@@ -17,6 +17,8 @@ struct uc_buffer_t {
   bool free;
   /* Receiver address. */
   linkaddr_t receiver;
+  /* Final receiver address. */
+  linkaddr_t final_receiver;
   /* Message type. */
   enum unicast_msg_type_t msg_type;
   /* Data in byte. */
@@ -46,10 +48,12 @@ void uc_buffer_terminate(void);
  *
  * @param type Message type.
  * @param receiver Receiver address.
+ * @param final_receiver Final receiver address.
  * @return true Entry added.
  * @return false Entry not added.
  */
-bool uc_buffer_add(enum unicast_msg_type_t type, const linkaddr_t *receiver);
+bool uc_buffer_add(enum unicast_msg_type_t type, const linkaddr_t *receiver,
+                   const linkaddr_t *final_receiver);
 
 /**
  * @brief Remove first entry in the unicast buffer.

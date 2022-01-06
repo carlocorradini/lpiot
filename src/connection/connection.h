@@ -27,7 +27,11 @@ enum broadcast_msg_type_t {
   /* Beacon message. */
   BROADCAST_MSG_TYPE_BEACON,
   /* Event message. */
-  BROADCAST_MSG_TYPE_EVENT
+  BROADCAST_MSG_TYPE_EVENT,
+  /* Forward discovery request. */
+  BROADCAST_MSG_TYPE_FORWARD_DISCOVERY_REQUEST,
+  /* Forward discovery response. */
+  BROADCAST_MSG_TYPE_FORWARD_DISCOVERY_RESPONSE
 };
 
 /**
@@ -94,11 +98,12 @@ struct connection_callbacks_t {
 
     /**
      * @brief Unicast sent callback.
+     * If status is true the message has been sent, otherwise something bad
+     * happened.
      *
-     * @param status Status code.
-     * @param num_tx Number of transmission(s).
+     * @param status Status.
      */
-    void (*sent)(int status, int num_tx);
+    void (*sent)(bool status);
   } uc;
 };
 
@@ -148,13 +153,16 @@ bool connection_broadcast_send(enum broadcast_msg_type_t type);
 /**
  * @brief Send a unicast message to receiver.
  * A header is added.
+ * If no routing final_receiver should be NULL.
  *
  * @param type Message type.
  * @param receiver Receiver address.
+ * @param final_receiver Final receiver address.
  * @return true Message sent.
  * @return false Message not sent due to an error.
  */
 bool connection_unicast_send(enum unicast_msg_type_t type,
-                             const linkaddr_t *receiver);
+                             const linkaddr_t *receiver,
+                             const linkaddr_t *final_receiver);
 
 #endif

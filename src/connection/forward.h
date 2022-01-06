@@ -43,4 +43,19 @@ struct forward_t* forward_find(const linkaddr_t* sensor);
  */
 void forward_add(const linkaddr_t* sensor, const linkaddr_t* next_hop);
 
+/**
+ * @brief Remove the first available hop of the sensor.
+ *
+ * @param sensor Sensor address.
+ */
+void forward_remove(const linkaddr_t* sensor);
+
+/**
+ * @brief Return the number of available hops of the sensor node.
+ *
+ * @param sensor Sensor address.
+ * @return Number of available hops.
+ */
+size_t forward_hops_length(const linkaddr_t* sensor);
+
 #endif

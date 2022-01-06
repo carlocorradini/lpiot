@@ -199,10 +199,9 @@ static void uc_recv(const struct unicast_hdr_t *header,
 /**
  * @brief Unicast sent callback.
  *
- * @param status Status code.
- * @param num_tx Number of transmission(s).
+ * @param status Status.
  */
-static void uc_sent(int status, int num_tx);
+static void uc_sent(bool status);
 
 /**
  * @brief Connection callbacks.
@@ -481,7 +480,8 @@ static bool send_collect_message(const struct collect_msg_t *collect_msg,
   packetbuf_copyfrom(collect_msg, sizeof(struct collect_msg_t));
 
   /* Send collect message in unicast to receiver node */
-  const bool ret = connection_unicast_send(UNICAST_MSG_TYPE_COLLECT, receiver);
+  const bool ret =
+      connection_unicast_send(UNICAST_MSG_TYPE_COLLECT, receiver, NULL);
   if (!ret)
     LOG_ERROR(
         "Error sending collect message to %02x:%02x: "
@@ -578,7 +578,8 @@ static bool send_command_message(const struct command_msg_t *command_msg,
   packetbuf_copyfrom(command_msg, sizeof(struct command_msg_t));
 
   /* Send command message in unicast to receiver node */
-  const bool ret = connection_unicast_send(UNICAST_MSG_TYPE_COMMAND, receiver);
+  const bool ret = connection_unicast_send(UNICAST_MSG_TYPE_COMMAND, receiver,
+                                           &command_msg->receiver);
   if (!ret)
     LOG_ERROR(
         "Error sending command message to %02x:%02x: "
@@ -637,10 +638,10 @@ static void uc_recv(const struct unicast_hdr_t *header,
   }
 }
 
-static void uc_sent(int status, int num_tx) {
-  if (status != MAC_TX_OK) {
+static void uc_sent(bool status) {
+  if (!status) {
     /* ERROR */
-    LOG_ERROR("Unicast message not sent due to %d", status);
+    LOG_ERROR("Unicast message not sent");
   } else {
     /* SUCCESS */
     LOG_INFO("Unicast message sent");
