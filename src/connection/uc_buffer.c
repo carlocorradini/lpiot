@@ -58,10 +58,14 @@ bool uc_buffer_add(const struct unicast_hdr_t *header,
 
   /* Save */
   buffer[i].free = false;
+  /* Header */
   buffer[i].header.type = header->type;
   buffer[i].header.hops = header->hops;
   linkaddr_copy(&buffer[i].header.final_receiver, &header->final_receiver);
+  /* END Header */
   linkaddr_copy(&buffer[i].receiver, receiver);
+  buffer[i].receiver_is_parent =
+      linkaddr_cmp(receiver, &connection_get_conn()->parent_node);
   packetbuf_copyto(buffer[i].data);
   buffer[i].data_len = packetbuf_datalen();
   buffer[i].num_send = 0;
@@ -108,11 +112,14 @@ static void shift_left(void) {
   size_t i;
   for (i = 0; i < CONNECTION_UC_BUFFER_SIZE - 1; ++i) {
     buffer[i].free = buffer[i + 1].free;
+    /* Header */
     buffer[i].header.type = buffer[i + 1].header.type;
     buffer[i].header.hops = buffer[i + 1].header.hops;
     linkaddr_copy(&buffer[i].header.final_receiver,
                   &buffer[i + 1].header.final_receiver);
+    /* END Header */
     linkaddr_copy(&buffer[i].receiver, &buffer[i + 1].receiver);
+    buffer[i].receiver_is_parent = buffer[i + 1].receiver_is_parent;
     memcpy(buffer[i].data, buffer[i + 1].data, buffer[i + 1].data_len);
     buffer[i].data_len = buffer[i + 1].data_len;
     buffer[i].num_send = buffer[i + 1].num_send;

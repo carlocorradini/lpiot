@@ -145,6 +145,14 @@ bool connection_is_connected(void);
 const struct connection_t *connection_get_conn(void);
 
 /**
+ * @brief Invalidate current connection.
+ *
+ * @return true Backup connection available.
+ * @return false No backup connection available.
+ */
+bool connection_invalidate(void);
+
+/**
  * @brief Send a broadcast message.
  * A header is added.
  *

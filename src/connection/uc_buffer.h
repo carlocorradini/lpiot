@@ -19,6 +19,8 @@ struct uc_buffer_t {
   struct unicast_hdr_t header;
   /* Receiver address. */
   linkaddr_t receiver;
+  /* Flag if receiver is parent (used if receiver change dynamically) */
+  bool receiver_is_parent;
   /* Data in byte. */
   uint8_t data[PACKETBUF_SIZE];
   /* Data length in byte. */

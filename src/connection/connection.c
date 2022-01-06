@@ -24,6 +24,15 @@ struct forward_discovery_msg_t {
   linkaddr_t sensor;
 };
 
+/**
+ * @brief Invalidate first hop of the sensor.
+ *
+ * @param sensor Sensor address.
+ * @return true New hop available.
+ * @return false No hop available.
+ */
+static bool invalidate_hop(const linkaddr_t *sensor);
+
 /* --- BROADCAST --- */
 /**
  * @brief Broadcast connection object.
@@ -172,6 +181,70 @@ bool connection_is_connected(void) {
 
 const struct connection_t *connection_get_conn(void) {
   return beacon_get_conn();
+}
+
+bool connection_invalidate(void) {
+  if (!connection_is_connected()) return false;
+
+  /* Obatin current connection */
+  const struct connection_t *conn = connection_get_conn();
+
+  LOG_WARN(
+      "Invalidating connection: "
+      "{ parent_node: %02x:%02x, seqn: %u, hopn: %u, rssi: %d }",
+      conn->parent_node.u8[0], conn->parent_node.u8[1], conn->seqn, conn->hopn,
+      conn->rssi);
+
+  /* Invalidate */
+  beacon_invalidate_connection();
+
+  /* Check if backup connection is available */
+  if (!connection_is_connected()) {
+    LOG_WARN("Backup connection not available");
+    return false;
+  }
+
+  /* New connection */
+  const struct connection_t *new_conn = connection_get_conn();
+  LOG_INFO(
+      "Backup connection: "
+      "{ parent_node: %02x:%02x, seqn: %u, hopn: %u, rssi: %d }",
+      new_conn->parent_node.u8[0], new_conn->parent_node.u8[1], new_conn->seqn,
+      new_conn->hopn, new_conn->rssi);
+
+  return true;
+}
+
+static bool invalidate_hop(const linkaddr_t *sensor) {
+  /* Find a forward node */
+  const struct forward_t *forward = forward_find(sensor);
+  if (forward == NULL) return false;
+
+  if (forward_hops_length(sensor) != 0) {
+    LOG_WARN("Invalidating hop %02x:%02x for sensor %02x:%02x",
+             forward->hops[0].u8[0], forward->hops[0].u8[1],
+             forward->sensor.u8[0], forward->sensor.u8[1]);
+  }
+
+  /* Remove broken forward for final receiver */
+  forward_remove(sensor);
+
+  /* New forward node */
+  const struct forward_t *new_forward = forward_find(sensor);
+  if (new_forward == NULL) return false;
+
+  /* Check no hop available */
+  if (forward_hops_length(&new_forward->sensor) == 0) {
+    LOG_WARN("No hop available for sensor %02x:%02x", new_forward->sensor.u8[0],
+             new_forward->sensor.u8[1]);
+    return false;
+  }
+
+  /* Hop available */
+  LOG_INFO("Available backup hop %02x:%02x for sensor %02x:%02x",
+           new_forward->hops[0].u8[0], new_forward->hops[0].u8[1],
+           new_forward->sensor.u8[0], new_forward->sensor.u8[1]);
+  return true;
 }
 
 /* --- BROADCAST --- */
@@ -353,6 +426,36 @@ static void uc_recv_cb(struct unicast_conn *uc_conn, const linkaddr_t *sender) {
     return;
   }
 
+  /* Check loops */
+  switch (uc_header.type) {
+    case UNICAST_MSG_TYPE_COLLECT: {
+      /* Check sender is not parent node */
+      if (linkaddr_cmp(sender, &connection_get_conn()->parent_node)) {
+        LOG_WARN(
+            "Loop detected: Received collect message from parent node "
+            "%02x:%02x",
+            sender->u8[0], sender->u8[1]);
+        /* Invalidate connection */
+        connection_invalidate();
+      }
+      break;
+    }
+    case UNICAST_MSG_TYPE_COMMAND: {
+      const struct forward_t *forward = forward_find(&uc_header.final_receiver);
+
+      /* Check sender is not hop */
+      if (linkaddr_cmp(sender, &forward->hops[0])) {
+        LOG_WARN(
+            "Loop detected: Received command message from hop "
+            "%02x:%02x",
+            sender->u8[0], sender->u8[1]);
+        /* Invalidate hop */
+        invalidate_hop(&uc_header.final_receiver);
+      }
+      break;
+    }
+  }
+
   /* Forward to callback */
   if (cb->uc.recv != NULL) cb->uc.recv(&uc_header, sender);
 }
@@ -377,75 +480,60 @@ static void uc_sent_cb(struct unicast_conn *uc_conn, int status, int num_tx) {
     /* Retry ? */
     bool retry = message->num_send < CONNECTION_UC_BUFFER_MAX_SEND;
 
-    /* Backup parent connection if receiver is parent node */
-    if (!retry && linkaddr_cmp(receiver, &conn->parent_node)) {
-      /* Give a last chance if receiver is controller */
-      if (linkaddr_cmp(receiver, &CONTROLLER) && !message->last_chance) {
-        /* Retry and give last chance */
-        retry = true;
-        message->last_chance = true;
-      } else {
-        /* Invalidate current connection */
-        LOG_WARN(
-            "Invalidating connection: "
-            "{ parent_node: %02x:%02x, seqn: %u, hopn: %u, rssi: %d }",
-            conn->parent_node.u8[0], conn->parent_node.u8[1], conn->seqn,
-            conn->hopn, conn->rssi);
-        beacon_invalidate_connection();
+    /* Logic */
+    if (!retry) {
+      switch (message->header.type) {
+        case UNICAST_MSG_TYPE_COLLECT: {
+          /* Ignore if receiver is not parent */
+          if (!message->receiver_is_parent) break;
 
-        /* Check if backup connection is available */
-        if (!connection_is_connected()) {
-          LOG_WARN("Unavailable backup connection");
-        } else {
-          /* New connection */
-          const struct connection_t *new_conn = connection_get_conn();
-          LOG_INFO(
-              "Available backup connection: "
-              "{ parent_node: %02x:%02x, seqn: %u, hopn: %u, rssi: %d }",
-              new_conn->parent_node.u8[0], new_conn->parent_node.u8[1],
-              new_conn->seqn, new_conn->hopn, new_conn->rssi);
+          /* Give a last chance if receiver is controller */
+          if (!message->last_chance && linkaddr_cmp(receiver, &CONTROLLER)) {
+            retry = true;
+            message->last_chance = true;
+            break;
+          }
 
-          /* Retry and give last chance */
+          /* Receiver is current parent */
+          if (linkaddr_cmp(receiver, &conn->parent_node)) {
+            /* Invalidate connection */
+            if (connection_invalidate()) {
+              retry = true;
+              message->last_chance = false;
+              message->num_send = CONNECTION_UC_BUFFER_MAX_SEND - 1;
+            }
+            break;
+          } else {
+            /* Parent changed dinamically */
+            retry = true;
+            message->last_chance = false;
+            message->num_send = CONNECTION_UC_BUFFER_MAX_SEND - 1;
+            break;
+          }
+
+          break;
+        }
+        case UNICAST_MSG_TYPE_COMMAND: {
+          /* Ignore if handle NULL */
+          if (linkaddr_cmp(&message->header.final_receiver, &linkaddr_null))
+            break;
+
+          /* Give a last chance */
+          if (!message->last_chance) {
+            retry = true;
+            message->last_chance = true;
+            break;
+          }
+
+          /* Invalidate hop */
+          invalidate_hop(&message->header.final_receiver);
+
+          /* Try with new hop or prepare to discovery */
           retry = true;
-          message->last_chance = true;
+          message->num_send = CONNECTION_UC_BUFFER_MAX_SEND - 1;
+
+          break;
         }
-      }
-    } else if (!retry &&
-               !linkaddr_cmp(&message->header.final_receiver, &linkaddr_null)) {
-      /* Backup forward hop */
-
-      if (!message->last_chance) {
-        /* Give a last chance */
-        retry = true;
-        message->last_chance = true;
-      } else {
-        const struct forward_t *forward =
-            forward_find(&message->header.final_receiver);
-
-        if (forward != NULL &&
-            !linkaddr_cmp(&forward->hops[0], &linkaddr_null)) {
-          LOG_WARN("Invalidating hop %02x:%02x for sensor %02x:%02x",
-                   forward->hops[0].u8[0], forward->hops[0].u8[1],
-                   forward->sensor.u8[0], forward->sensor.u8[1]);
-        }
-        /* Remove broken forward for final receiver */
-        forward_remove(&message->header.final_receiver);
-
-        const struct forward_t *new_forward =
-            forward_find(&message->header.final_receiver);
-        if (new_forward != NULL &&
-            !linkaddr_cmp(&new_forward->hops[0], &linkaddr_null)) {
-          LOG_INFO("Available backup hop %02x:%02x for sensor %02x:%02x",
-                   new_forward->hops[0].u8[0], new_forward->hops[0].u8[1],
-                   new_forward->sensor.u8[0], new_forward->sensor.u8[1]);
-        } else if (new_forward != NULL) {
-          LOG_WARN("No hop available for sensor %02x:%02x",
-                   new_forward->sensor.u8[0], new_forward->sensor.u8[1]);
-        }
-
-        /* Try with new hop or prepare to discovery */
-        retry = true;
-        message->num_send = CONNECTION_UC_BUFFER_MAX_SEND - 1;
       }
     }
 
@@ -473,7 +561,7 @@ static void uc_send_next(void) {
     /* Obtain buffered message */
     struct uc_buffer_t *message = uc_buffer_first();
 
-    /* Check if no retries left */
+    /* No last chance and maximum number of send */
     if (!message->last_chance &&
         message->num_send >= CONNECTION_UC_BUFFER_MAX_SEND) {
       LOG_WARN(
@@ -488,6 +576,7 @@ static void uc_send_next(void) {
       continue;
     }
 
+    /* Logic */
     switch (message->header.type) {
       case UNICAST_MSG_TYPE_COLLECT: {
         /* If disconnected no collect message could be sent */
@@ -503,6 +592,7 @@ static void uc_send_next(void) {
           if (cb->uc.sent != NULL) cb->uc.sent(false);
           continue;
         }
+
         /* Connection available, update receiver (parent node) */
         linkaddr_copy(&message->receiver, &connection_get_conn()->parent_node);
         break;
@@ -510,9 +600,10 @@ static void uc_send_next(void) {
       case UNICAST_MSG_TYPE_COMMAND: {
         const struct forward_t *forward =
             forward_find(&message->header.final_receiver);
+        if (forward == NULL) break;
 
         /* If no available hop try to find one */
-        if (linkaddr_cmp(&forward->hops[0], &linkaddr_null)) {
+        if (forward_hops_length(&forward->sensor) == 0) {
           /* Hop not available */
           LOG_WARN("No hop available: try to find one...");
 
@@ -537,15 +628,18 @@ static void uc_send_next(void) {
             continue;
           }
 
+          /* Sent */
           LOG_INFO(
-              "Sending forward discovery request message for sensor %02x:%02x",
+              "Sending forward discovery request message for sensor "
+              "%02x:%02x",
               forward->sensor.u8[0], forward->sensor.u8[1]);
-          /* Start timeout */
+          /* Start forward discovery timeout */
           ctimer_set(&forward_discovery_timer,
                      CONNECTION_FORWARD_DISCOVERY_TIMEOUT,
                      forward_discovery_timer_cb, NULL);
           return;
         }
+
         /* Hop available, update receiver (hop node) */
         linkaddr_copy(&message->receiver, &forward->hops[0]);
         break;
@@ -567,12 +661,14 @@ static void uc_send_next(void) {
       if (cb->uc.sent != NULL) cb->uc.sent(false);
       continue;
     }
+
+    /* Sent */
     LOG_INFO(
         "Sending buffered unicast message: "
         "{ receiver: %02x:%02x, type: %d, num_send: %u }",
         message->receiver.u8[0], message->receiver.u8[1], message->header.type,
         message->num_send);
-    break;
+    return;
   }
 }
 
@@ -601,11 +697,11 @@ static void forward_discovery_recv_cb(const struct broadcast_hdr_t *bc_header,
   /* Logic */
   switch (bc_header->type) {
     case BROADCAST_MSG_TYPE_FORWARD_DISCOVERY_REQUEST: {
-      /* Find a possible forward */
       const struct forward_t *forward = forward_find(&fd_msg.sensor);
 
-      /* Check if forward exists */
-      if (forward == NULL || linkaddr_cmp(&forward->hops[0], &linkaddr_null)) {
+      /* If not me or not known */
+      if (!linkaddr_cmp(&fd_msg.sensor, &linkaddr_node_addr) &&
+          forward_hops_length(&fd_msg.sensor) == 0) {
         LOG_WARN("Forward for sensor %02x:%02x is not known",
                  fd_msg.sensor.u8[0], fd_msg.sensor.u8[1]);
         return;
@@ -626,14 +722,15 @@ static void forward_discovery_recv_cb(const struct broadcast_hdr_t *bc_header,
             "%02x:%02x to %02x:%02x",
             fd_msg.sensor.u8[0], fd_msg.sensor.u8[1], sender->u8[0],
             sender->u8[1]);
-      } else {
-        LOG_INFO(
-            "Sending forward discovery response message for sensor "
-            "%02x:%02x to %02x:%02x",
-            fd_msg.sensor.u8[0], fd_msg.sensor.u8[1], sender->u8[0],
-            sender->u8[1]);
+        break;
       }
 
+      /* Sent */
+      LOG_INFO(
+          "Sending forward discovery response message for sensor "
+          "%02x:%02x to %02x:%02x",
+          fd_msg.sensor.u8[0], fd_msg.sensor.u8[1], sender->u8[0],
+          sender->u8[1]);
       break;
     }
     case BROADCAST_MSG_TYPE_FORWARD_DISCOVERY_RESPONSE: {

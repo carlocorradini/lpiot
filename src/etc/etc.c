@@ -310,8 +310,9 @@ bool etc_command(const linkaddr_t *receiver, enum command_type_t command,
   /* Check if forwarding rule exists */
   if (forward == NULL || linkaddr_cmp(&forward->hops[0], &linkaddr_null)) {
     LOG_ERROR(
-        "Unable to forward command message because no forwarding rule has "
-        "been found");
+        "Unable to send command message because no forwarding rule has "
+        "been found for sensor %02x:%02x",
+        receiver->u8[0], receiver->u8[1]);
     return false;
   }
 
@@ -552,10 +553,11 @@ static void command_msg_cb(const struct unicast_hdr_t *header,
     const struct forward_t *forward = forward_find(&command_msg.receiver);
 
     /* Check if forwarding rule exists */
-    if (forward == NULL || linkaddr_cmp(&forward->hops[0], &linkaddr_null)) {
+    if (forward_hops_length(&command_msg.receiver) == 0) {
       LOG_ERROR(
           "Unable to forward command message because no forwarding rule has "
-          "been found");
+          "been found for sensor %02x:%02x",
+          command_msg.receiver.u8[0], command_msg.receiver.u8[1]);
       return;
     }
 
