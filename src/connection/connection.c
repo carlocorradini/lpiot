@@ -697,8 +697,6 @@ static void forward_discovery_recv_cb(const struct broadcast_hdr_t *bc_header,
   /* Logic */
   switch (bc_header->type) {
     case BROADCAST_MSG_TYPE_FORWARD_DISCOVERY_REQUEST: {
-      const struct forward_t *forward = forward_find(&fd_msg.sensor);
-
       /* If not me or not known */
       if (!linkaddr_cmp(&fd_msg.sensor, &linkaddr_node_addr) &&
           forward_hops_length(&fd_msg.sensor) == 0) {
