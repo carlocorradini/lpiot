@@ -6,16 +6,6 @@
 #include "config/config.h"
 
 /**
- * @brief Hop forward structure.
- */
-struct forward_hop_t {
-  /* Address of the hop. */
-  linkaddr_t address;
-  /* Hop distance. */
-  uint8_t distance;
-};
-
-/**
  * @brief Forward table entry.
  * Defines how a message to a Sensor node should be forwarded.
  * Note that there could be no forwarding rule available.
@@ -23,8 +13,8 @@ struct forward_hop_t {
 struct forward_t {
   /* Sensor node address (receiver). */
   linkaddr_t sensor;
-  /* Forwarding nodes (next-hop). */
-  struct forward_hop_t hops[CONNECTION_FORWARD_MAX_SIZE];
+  /* Forwarding node addresses (next-hop). */
+  linkaddr_t hops[CONNECTION_FORWARD_MAX_SIZE];
 };
 
 /**
@@ -49,34 +39,16 @@ struct forward_t* forward_find(const linkaddr_t* sensor);
  * @brief Add a next hop to reach sensors.
  *
  * @param sensor Sensor address.
- * @param hop_address Hop address.
- * @param hop_distance Hop distance.
+ * @param next_hop Next hop adress.
  */
-void forward_add(const linkaddr_t* sensor, const linkaddr_t* hop_address,
-                 uint8_t hop_distance);
+void forward_add(const linkaddr_t* sensor, const linkaddr_t* next_hop);
 
 /**
  * @brief Remove the first available hop of the sensor.
  *
  * @param sensor Sensor address.
  */
-void forward_remove_first(const linkaddr_t* sensor);
-
-/**
- * @brief Remove a specific hop of the sensor.
- *
- * @param sensor Sensor address.
- * @param hop_address Hop address.
- */
-void forward_remove_hop(const linkaddr_t* sensor,
-                        const linkaddr_t* hop_address);
-
-/**
- * @brief Sort by distance in ASC order hops of the sensor.
- *
- * @param sensor Sensor address.
- */
-void forward_sort(const linkaddr_t* sensor);
+void forward_remove(const linkaddr_t* sensor);
 
 /**
  * @brief Return the number of available hops of the sensor node.
