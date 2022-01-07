@@ -433,6 +433,18 @@ static void collect_msg_cb(const struct unicast_hdr_t *header,
   /* Update forwarding rule */
   forward_add(&collect_msg.sender, sender);
 
+  /* Ignore if not current event */
+  if (collect_msg.event_seqn != event.seqn &&
+      !linkaddr_cmp(&collect_msg.event_source, &event.source)) {
+    LOG_WARN(
+        "Collect message event { seqn: %u, source: %02x:%02x } is not "
+        "currently handled event { seqn: %u, source: %02x:%02x }",
+        collect_msg.event_seqn, collect_msg.event_source.u8[0],
+        collect_msg.event_source.u8[1], event.seqn, event.source.u8[0],
+        event.source.u8[1]);
+    return;
+  }
+
   /* Forward based on node role */
   switch (node_get_role()) {
     case NODE_ROLE_SENSOR_ACTUATOR:
