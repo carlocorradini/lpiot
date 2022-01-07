@@ -757,8 +757,11 @@ static void forward_discovery_recv_cb(const struct broadcast_hdr_t *bc_header,
       break;
     }
     case BROADCAST_MSG_TYPE_FORWARD_DISCOVERY_RESPONSE: {
-      /* Learn */
-      forward_add(&fd_msg.sensor, sender, fd_msg.distance);
+      /* Learn only if not my parent */
+      if (!linkaddr_cmp(sender, &connection_get_conn()->parent_node) &&
+          connection_is_connected()) {
+        forward_add(&fd_msg.sensor, sender, fd_msg.distance);
+      }
 
       /* Ignore if timer expired */
       if (ctimer_expired(&forward_discovery_timer)) {
@@ -816,6 +819,8 @@ static void forward_discovery_timer_cb(void *ignored) {
     LOG_INFO("Forward discovery succeeded");
     /* Update send counter */
     message->num_send = CONNECTION_UC_BUFFER_MAX_SEND - 1;
+    /* Sort new hops */
+    forward_sort(&forward->sensor);
   }
 
   /* Recall buffer */
