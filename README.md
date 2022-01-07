@@ -12,9 +12,17 @@
 $ make
 ```
 
+### Zolertia Firefly
+
+> Testbed
+
+```bash
+$ make TARGET=zoul
+```
+
 ### Statistics
 
-> Disable logger and enable only statistics output
+> Enable statistics output used by the analisy script
 
 ```bash
 $ make STATS=true
@@ -30,6 +38,22 @@ $ make STATS=true
 
 ```
 $ make cleanall
+```
+
+## Analisy
+
+> Build with statistics: ```make STATS=true```
+
+### Cooja
+
+```bash
+$ python scenarios/parse-stats.py <FILE_NAME>.log
+```
+
+### Testbed
+
+```bash
+$ python scenarios/parse-stats.py scenarios/testbed/<JOB_ID_FOLDER>/test.log --testbed
 ```
 
 ## License

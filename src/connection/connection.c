@@ -4,7 +4,7 @@
 #include <net/rime/broadcast.h>
 #include <net/rime/unicast.h>
 
-#include "beacon/beacon.h"
+#include "beacon.h"
 #include "config/config.h"
 #include "connection/uc_buffer.h"
 #include "forward.h"

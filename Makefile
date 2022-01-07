@@ -27,14 +27,14 @@ endif
 # --- SOURCE FILES
 PROJECTDIRS += src \
 			   src/config \
-			   src/connection src/connection/beacon \
+			   src/connection \
 			   src/etc \
 			   src/logger \
 			   src/node src/node/controller src/node/forwarder src/node/sensor \
 			   src/tool
 PROJECT_SOURCEFILES += \
 					   config.c \
-					   connection.c forward.c uc_buffer.c beacon.c \
+					   connection.c beacon.c forward.c uc_buffer.c \
 					   etc.c \
 					   logger.c \
 					   node.c controller.c forwarder.c sensor.c
@@ -51,5 +51,7 @@ cleanall: distclean
 	rm -rf obj_zoul
 	rm -f COOJA.log COOJA.testlog
 	rm -f *_mrm*.csv *_mrm*.log
+	rm -f scenarios/testbed/last-test.txt
+	rm -rf scenarios/testbed/job_*/
 
 include $(CONTIKI)/Makefile.include
