@@ -757,6 +757,9 @@ static void forward_discovery_recv_cb(const struct broadcast_hdr_t *bc_header,
       break;
     }
     case BROADCAST_MSG_TYPE_FORWARD_DISCOVERY_RESPONSE: {
+      /* Increase distance by 1 */
+      fd_msg.distance += 1;
+
       /* Learn only if not my parent */
       if (!linkaddr_cmp(sender, &connection_get_conn()->parent_node) &&
           connection_is_connected()) {
