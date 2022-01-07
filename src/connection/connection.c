@@ -534,10 +534,17 @@ static void uc_sent_cb(struct unicast_conn *uc_conn, int status, int num_tx) {
           /* Invalidate hop */
           invalidate_hop(&message->header.final_receiver);
 
-          /* Try with new hop or prepare to discovery */
-          retry = true;
-          message->num_send = CONNECTION_UC_BUFFER_MAX_SEND - 1;
+          if (forward_hops_length(&message->header.final_receiver) != 0) {
+            /* Will try with new hop */
+            message->last_chance = false;
+            message->num_send = CONNECTION_UC_BUFFER_MAX_SEND - 1;
+          } else {
+            /* Will try with forward discovery */
+            message->last_chance = true;
+          }
 
+          /* Retry */
+          retry = true;
           break;
         }
       }
@@ -791,8 +798,9 @@ static void forward_discovery_recv_cb(const struct broadcast_hdr_t *bc_header,
 }
 
 static void forward_discovery_timer_cb(void *ignored) {
+  struct uc_buffer_t *message = uc_buffer_first();
   const struct forward_t *forward =
-      forward_find(&uc_buffer_first()->header.final_receiver);
+      forward_find(&message->header.final_receiver);
   const size_t hops_length = forward_hops_length(&forward->sensor);
 
   LOG_INFO("Forward discovery timer expired for sensor %02x:%02x",
@@ -802,14 +810,14 @@ static void forward_discovery_timer_cb(void *ignored) {
 
   if (hops_length == 0) {
     LOG_WARN("Forward discovery failed");
-    /* Remove entry */
-    uc_buffer_remove();
-    /* Forward to callback */
-    if (cb->uc.sent != NULL) cb->uc.sent(false);
+    /* Remove last chance */
+    message->last_chance = false;
   } else {
     LOG_INFO("Forward discovery succeeded");
+    /* Update send counter */
+    message->num_send = CONNECTION_UC_BUFFER_MAX_SEND - 1;
   }
 
-  /* Next unicast buffer */
+  /* Recall buffer */
   uc_send_next();
 }
