@@ -22,6 +22,8 @@ static const struct connection_callbacks_t *cb;
 struct forward_discovery_msg_t {
   /* Sensor address. */
   linkaddr_t sensor;
+  /* Hop distance. */
+  uint8_t distance;
 };
 
 /**
@@ -221,13 +223,15 @@ static bool invalidate_hop(const linkaddr_t *sensor) {
   if (forward == NULL) return false;
 
   if (forward_hops_length(sensor) != 0) {
-    LOG_WARN("Invalidating hop %02x:%02x for sensor %02x:%02x",
-             forward->hops[0].u8[0], forward->hops[0].u8[1],
-             forward->sensor.u8[0], forward->sensor.u8[1]);
+    LOG_WARN(
+        "Invalidating hop for sensor %02x:%02x: "
+        "{ address: %02x:%02x, distance: %u }",
+        sensor->u8[0], sensor->u8[1], forward->hops[0].address.u8[0],
+        forward->hops[0].address.u8[1], forward->hops[0].distance);
   }
 
   /* Remove broken forward for final receiver */
-  forward_remove(sensor);
+  forward_remove_first(sensor);
 
   /* New forward node */
   const struct forward_t *new_forward = forward_find(sensor);
@@ -235,15 +239,17 @@ static bool invalidate_hop(const linkaddr_t *sensor) {
 
   /* Check no hop available */
   if (forward_hops_length(&new_forward->sensor) == 0) {
-    LOG_WARN("No hop available for sensor %02x:%02x", new_forward->sensor.u8[0],
-             new_forward->sensor.u8[1]);
+    LOG_WARN("No hop available for sensor %02x:%02x", sensor->u8[0],
+             sensor->u8[1]);
     return false;
   }
 
   /* Hop available */
-  LOG_INFO("Available backup hop %02x:%02x for sensor %02x:%02x",
-           new_forward->hops[0].u8[0], new_forward->hops[0].u8[1],
-           new_forward->sensor.u8[0], new_forward->sensor.u8[1]);
+  LOG_INFO(
+      "Available backup hop for sensor %02x:%02x: "
+      "{ address: %02x:%02x, distance: %u }",
+      sensor->u8[0], sensor->u8[1], new_forward->hops[0].address.u8[0],
+      new_forward->hops[0].address.u8[1], new_forward->hops[0].distance);
   return true;
 }
 
@@ -444,7 +450,7 @@ static void uc_recv_cb(struct unicast_conn *uc_conn, const linkaddr_t *sender) {
       const struct forward_t *forward = forward_find(&uc_header.final_receiver);
 
       /* Check sender is not hop */
-      if (linkaddr_cmp(sender, &forward->hops[0])) {
+      if (linkaddr_cmp(sender, &forward->hops[0].address)) {
         LOG_WARN(
             "Loop detected: Received command message from hop "
             "%02x:%02x",
@@ -610,6 +616,7 @@ static void uc_send_next(void) {
           /* Prepare forward discovery message */
           struct forward_discovery_msg_t fd_msg;
           linkaddr_copy(&fd_msg.sensor, &forward->sensor);
+          fd_msg.distance = UINT8_MAX;
 
           /* Try to discover a forward node */
           packetbuf_clear();
@@ -641,7 +648,7 @@ static void uc_send_next(void) {
         }
 
         /* Hop available, update receiver (hop node) */
-        linkaddr_copy(&message->receiver, &forward->hops[0]);
+        linkaddr_copy(&message->receiver, &forward->hops[0].address);
         break;
       }
       default: {
@@ -690,14 +697,17 @@ static void forward_discovery_recv_cb(const struct broadcast_hdr_t *bc_header,
 
   LOG_INFO(
       "Received forward discovery message of type %d from %02x:%02x: "
-      "{ sensor: %02x:%02x }",
+      "{ sensor: %02x:%02x, distance: %u }",
       bc_header->type, sender->u8[0], sender->u8[1], fd_msg.sensor.u8[0],
-      fd_msg.sensor.u8[1]);
+      fd_msg.sensor.u8[1], fd_msg.distance);
 
   /* Logic */
   switch (bc_header->type) {
     case BROADCAST_MSG_TYPE_FORWARD_DISCOVERY_REQUEST: {
-      /* If not me or not known */
+      /* Remove forward hop for sensor (if exists) */
+      forward_remove_hop(&fd_msg.sensor, sender);
+
+      /* Ignore if sensor is not me and not known */
       if (!linkaddr_cmp(&fd_msg.sensor, &linkaddr_node_addr) &&
           forward_hops_length(&fd_msg.sensor) == 0) {
         LOG_WARN("Forward for sensor %02x:%02x is not known",
@@ -705,9 +715,17 @@ static void forward_discovery_recv_cb(const struct broadcast_hdr_t *bc_header,
         return;
       }
 
-      /* Exists */
-      LOG_INFO("Forward for sensor %02x:%02x is known", fd_msg.sensor.u8[0],
-               fd_msg.sensor.u8[1]);
+      if (linkaddr_cmp(&fd_msg.sensor, &linkaddr_node_addr)) {
+        /* Sensor is me, set distance to 0 */
+        fd_msg.distance = 0;
+      } else {
+        /* Known, set distance to value */
+        fd_msg.distance = forward_find(&fd_msg.sensor)->hops[0].distance;
+      }
+
+      LOG_INFO(
+          "Forward for sensor %02x:%02x is known with a distance of %u hops",
+          fd_msg.sensor.u8[0], fd_msg.sensor.u8[1], fd_msg.distance);
 
       /* Prepare packetbuf */
       packetbuf_clear();
@@ -732,6 +750,9 @@ static void forward_discovery_recv_cb(const struct broadcast_hdr_t *bc_header,
       break;
     }
     case BROADCAST_MSG_TYPE_FORWARD_DISCOVERY_RESPONSE: {
+      /* Learn */
+      forward_add(&fd_msg.sensor, sender, fd_msg.distance);
+
       /* Ignore if timer expired */
       if (ctimer_expired(&forward_discovery_timer)) {
         LOG_WARN(
@@ -741,7 +762,7 @@ static void forward_discovery_recv_cb(const struct broadcast_hdr_t *bc_header,
         return;
       }
 
-      /* Sensor to find hop */
+      /* Original sensor address */
       const linkaddr_t *sensor = &uc_buffer_first()->header.final_receiver;
 
       /* Check request and response match */
@@ -755,9 +776,11 @@ static void forward_discovery_recv_cb(const struct broadcast_hdr_t *bc_header,
       }
 
       /* Add forward */
-      LOG_INFO("Forward response from %02x:%02x for sensor %02x:%02x",
-               sender->u8[0], sender->u8[1], sensor->u8[0], sensor->u8[1]);
-      forward_add(sensor, sender);
+      LOG_INFO(
+          "Forward discovery response from %02x:%02x: "
+          "{ address: %02x:%02x, distance: %u }",
+          sender->u8[0], sender->u8[1], fd_msg.sensor.u8[0],
+          fd_msg.sensor.u8[1], fd_msg.distance);
       break;
     }
     default: {

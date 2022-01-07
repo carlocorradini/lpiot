@@ -45,7 +45,8 @@ struct forward_t* forward_find(const linkaddr_t* sensor) {
   return NULL;
 }
 
-void forward_add(const linkaddr_t* sensor, const linkaddr_t* next_hop) {
+void forward_add(const linkaddr_t* sensor, const linkaddr_t* hop_address,
+                 uint8_t hop_distance) {
   struct forward_t* f = forward_find(sensor);
   size_t i;
 
@@ -53,29 +54,48 @@ void forward_add(const linkaddr_t* sensor, const linkaddr_t* next_hop) {
 
   /* Remove duplicates */
   for (i = 0; i < CONNECTION_FORWARD_MAX_SIZE; ++i) {
-    if (linkaddr_cmp(&f->hops[i], next_hop)) {
+    if (linkaddr_cmp(&f->hops[i].address, hop_address)) {
       shift_left(f, i);
     }
   }
 
   /* Add */
   shift_right(f);
-  linkaddr_copy(&f->hops[0], next_hop);
+  linkaddr_copy(&f->hops[0].address, hop_address);
+  f->hops[0].distance = hop_distance;
 
   /* Print */
   print_forwardings();
 }
 
-void forward_remove(const linkaddr_t* sensor) {
+void forward_remove_first(const linkaddr_t* sensor) {
+  const struct forward_t* f = forward_find(sensor);
+  forward_remove_hop(sensor, &f->hops[0].address);
+}
+
+void forward_remove_hop(const linkaddr_t* sensor,
+                        const linkaddr_t* hop_address) {
   struct forward_t* f = forward_find(sensor);
+  struct forward_hop_t* f_hop = NULL;
+  size_t i;
 
   if (f == NULL) return;
 
-  LOG_DEBUG("Removing hop %02x:%02x for sensor %02x:%02x", f->hops[0].u8[0],
-            f->hops[0].u8[1], sensor->u8[0], sensor->u8[1]);
+  for (i = 0; i < CONNECTION_FORWARD_MAX_SIZE; ++i) {
+    if (!linkaddr_cmp(hop_address, &f->hops[i].address)) continue;
+    f_hop = &f->hops[i];
+    break;
+  }
+  if (f_hop == NULL) return;
+
+  LOG_INFO(
+      "Removing hop at %d for sensor %02x:%02x: "
+      "{ address: %02x:%02x, distance: %u }",
+      i, sensor->u8[0], sensor->u8[1], f_hop->address.u8[0],
+      f_hop->address.u8[1], f_hop->distance);
 
   /* Remove */
-  shift_left(f, 0);
+  shift_left(f, i);
 
   /* Print */
   print_forwardings();
@@ -89,7 +109,7 @@ size_t forward_hops_length(const linkaddr_t* sensor) {
   if (f == NULL) return length;
 
   for (i = 0; i < CONNECTION_FORWARD_MAX_SIZE; ++i) {
-    if (linkaddr_cmp(&f->hops[i], &linkaddr_null)) break;
+    if (linkaddr_cmp(&f->hops[i].address, &linkaddr_null)) break;
     length += 1;
   }
 
@@ -104,7 +124,8 @@ static void reset(void) {
   for (i = 0; i < NUM_SENSORS; ++i) {
     linkaddr_copy(&forwardings[i].sensor, &SENSORS[i]);
     for (j = 0; j < CONNECTION_FORWARD_MAX_SIZE; ++j) {
-      linkaddr_copy(&forwardings[i].hops[j], &linkaddr_null);
+      linkaddr_copy(&forwardings[i].hops[j].address, &linkaddr_null);
+      forwardings[i].hops[j].distance = UINT8_MAX;
     }
   }
 }
@@ -115,10 +136,12 @@ static void shift_right(struct forward_t* f) {
   if (f == NULL) return;
 
   for (i = CONNECTION_FORWARD_MAX_SIZE - 1; i > 0; --i) {
-    linkaddr_copy(&f->hops[i], &f->hops[i - 1]);
+    linkaddr_copy(&f->hops[i].address, &f->hops[i - 1].address);
+    f->hops[i].distance = f->hops[i - 1].distance;
   }
 
-  linkaddr_copy(&f->hops[0], &linkaddr_null);
+  linkaddr_copy(&f->hops[0].address, &linkaddr_null);
+  f->hops[0].distance = UINT8_MAX;
 }
 
 static void shift_left(struct forward_t* f, size_t from) {
@@ -127,10 +150,12 @@ static void shift_left(struct forward_t* f, size_t from) {
   if (f == NULL) return;
 
   for (i = from; i < CONNECTION_FORWARD_MAX_SIZE - 1; ++i) {
-    linkaddr_copy(&f->hops[i], &f->hops[i + 1]);
+    linkaddr_copy(&f->hops[i].address, &f->hops[i + 1].address);
+    f->hops[i].distance = f->hops[i + 1].distance;
   }
 
-  linkaddr_copy(&f->hops[i], &linkaddr_null);
+  linkaddr_copy(&f->hops[i].address, &linkaddr_null);
+  f->hops[i].distance = UINT8_MAX;
 }
 
 static void print_forwardings(void) {
@@ -148,7 +173,8 @@ static void print_forwardings(void) {
     printf("%u{ node: %02x:%02x, hops: [ ", i, f->sensor.u8[0],
            f->sensor.u8[1]);
     for (j = 0; j < CONNECTION_FORWARD_MAX_SIZE; ++j) {
-      printf("%02x:%02x ", f->hops[j].u8[0], f->hops[j].u8[1]);
+      printf("{ address: %02x:%02x, distance: %u } ", f->hops[j].address.u8[0],
+             f->hops[j].address.u8[1], f->hops[j].distance);
     }
     printf("] } ");
   }
