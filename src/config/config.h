@@ -152,16 +152,13 @@ extern const linkaddr_t SENSORS[NUM_SENSORS];
 #define CONNECTION_UC_BUFFER_SEND_DELAY (random_rand() % (CLOCK_SECOND / 10))
 
 /**
- * @brief Time to wait before checking next message in buffer after an emergency
- * command has been sent.
+ * @brief Maximum number of hops in forwarding structure.
  */
-#define CONNECTION_EMERGENCY_COMMAND_NEXT_MESSAGE_IN_BUFFER_DELAY \
-  (CLOCK_SECOND * 2)
+#define CONNECTION_FORWARD_MAX_SIZE (3)
 
 /**
- * @brief Emergency command message propagation suppression time.
+ * @brief Time to wait before checking the forward hops of the sensor.
  */
-#define CONNECTION_EMERGENCY_COMMAND_SUPPRESSION_PROPAGATION \
-  (CONNECTION_EMERGENCY_COMMAND_NEXT_MESSAGE_IN_BUFFER_DELAY + CLOCK_SECOND * 2)
+#define CONNECTION_FORWARD_DISCOVERY_TIMEOUT (CLOCK_SECOND * 1)
 
 #endif
