@@ -45,8 +45,8 @@ void forward_remove(const linkaddr_t* sensor) {
   struct forward_t* f = forward_find(sensor);
   if (f == NULL) return;
 
-  LOG_DEBUG("Removing hop %02x:%02x for sensor %02x:%02x", f->hop.u8[0],
-            f->hop.u8[1], sensor->u8[0], sensor->u8[1]);
+  LOG_WARN("Removing hop %02x:%02x for sensor %02x:%02x", f->hop.u8[0],
+           f->hop.u8[1], sensor->u8[0], sensor->u8[1]);
 
   /* Remove */
   linkaddr_copy(&f->hop, &linkaddr_null);

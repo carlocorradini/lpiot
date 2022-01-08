@@ -16,14 +16,6 @@
  */
 static const struct connection_callbacks_t *cb;
 
-/**
- * @brief Forward discovery message.
- */
-struct forward_discovery_msg_t {
-  /* Sensor address. */
-  linkaddr_t sensor;
-};
-
 /* --- BROADCAST --- */
 /**
  * @brief Broadcast connection object.
@@ -121,27 +113,42 @@ static void uc_send_next(void);
 static const struct unicast_callbacks uc_cb = {.recv = uc_recv_cb,
                                                .sent = uc_sent_cb};
 
-/* --- FORWARD DISCOVERY --- */
+/* --- EMERGENCY COMMAND --- */
 /**
- * @brief Forward discovery timer.
+ * @brief Emergency command next in buffer timer.
  */
-static struct ctimer forward_discovery_timer;
+static struct ctimer emergency_command_next_in_buffer_timer;
 
 /**
- * @brief Broadcast receive callback for a forward discovery message.
+ * @brief Emergency command suppression timer.
+ */
+static struct ctimer emergency_command_suppression_timer;
+
+/**
+ * @brief Broadcast receive callback for an emergency command message.
  *
  * @param bc_header Broadcast header.
  * @param sender Sender address.
  */
-static void forward_discovery_recv_cb(const struct broadcast_hdr_t *bc_header,
+static void emergency_command_recv_cb(const struct broadcast_hdr_t *bc_header,
                                       const linkaddr_t *sender);
 
 /**
- * @brief Forward delivery timer callback.
+ * @brief Emergency command next in buffer timer callback.
  *
  * @param ignored
  */
-static void forward_discovery_timer_cb(void *ignored);
+static void emergency_command_next_in_buffer_timer_cb(void *ignored);
+
+/**
+ * @brief Send emergency command message.
+ *
+ * @param command_msg Emergency command message to send.
+ * @return true Message sent.
+ * @return false Message not sent.
+ */
+static bool send_emergency_command_message(
+    const struct command_msg_t *command_msg);
 
 /* --- --- */
 void connection_open(uint16_t channel,
@@ -277,10 +284,9 @@ static void bc_recv_cb(struct broadcast_conn *bc_conn,
       beacon_recv_cb(&bc_header, sender);
       break;
     }
-    case BROADCAST_MSG_TYPE_FORWARD_DISCOVERY_REQUEST:
-    case BROADCAST_MSG_TYPE_FORWARD_DISCOVERY_RESPONSE: {
-      /* Forward to forward discovery */
-      forward_discovery_recv_cb(&bc_header, sender);
+    case BROADCAST_MSG_TYPE_EMERGENCY_COMMAND: {
+      /* Forward to emergency command */
+      emergency_command_recv_cb(&bc_header, sender);
       break;
     }
     default: {
@@ -500,11 +506,8 @@ static void uc_sent_cb(struct unicast_conn *uc_conn, int status, int num_tx) {
           /* Remove hop */
           forward_remove(&message->header.final_receiver);
 
-          /* TODO Rinomina il commento please */
-          /* Retry */
+          /* Prepare to send in emergency mode */
           retry = true;
-          message->last_chance = true;
-
           break;
         }
       }
@@ -525,6 +528,7 @@ static void uc_sent_cb(struct unicast_conn *uc_conn, int status, int num_tx) {
     if (cb->uc.sent != NULL) cb->uc.sent(true);
   }
 
+  /* Buffer */
   uc_send_next();
 }
 
@@ -539,11 +543,10 @@ static void uc_buffer_send_timer_cb(void *ignored) {
         "{ receiver: %02x:%02x, type: %d, num_send: %u }",
         message->receiver.u8[0], message->receiver.u8[1], message->header.type,
         message->num_send);
-    /* Forward to callback */
-    if (cb->uc.sent != NULL) cb->uc.sent(false);
-    /* Remove entry */
-    uc_buffer_remove();
-    /* Next */
+    /* Prepare to discard buffered message */
+    struct uc_buffer_t *message = uc_buffer_first();
+    message->last_chance = false;
+    /* Buffer */
     uc_send_next();
     return;
   }
@@ -587,10 +590,8 @@ static void uc_send_next(void) {
               "{ receiver: %02x:%02x, type: %d }",
               message->receiver.u8[0], message->receiver.u8[1],
               message->header.type);
-          /* Remove entry */
-          uc_buffer_remove();
-          /* Forward to callback */
-          if (cb->uc.sent != NULL) cb->uc.sent(false);
+          /* Prepare to discard buffered message */
+          message->last_chance = false;
           continue;
         }
 
@@ -603,41 +604,28 @@ static void uc_send_next(void) {
         const struct forward_t *forward = forward_find(sensor);
         if (forward == NULL) break;
 
-        /* If no available hop try to find one */
+        /* If no available hop send in emergency mode */
         if (!forward_hop_available(sensor)) {
           /* Hop not available */
-          LOG_WARN("No hop available: try to find one...");
-
-          /* Prepare forward discovery message */
-          struct forward_discovery_msg_t fd_msg;
-          linkaddr_copy(&fd_msg.sensor, &forward->sensor);
-
-          /* Try to discover a forward node */
-          packetbuf_clear();
-          packetbuf_copyfrom(&fd_msg, sizeof(fd_msg));
+          LOG_WARN("No hop available: send in emergency mode");
 
           /* Send */
-          if (!bc_send(BROADCAST_MSG_TYPE_FORWARD_DISCOVERY_REQUEST)) {
-            LOG_ERROR(
-                "Error sending forward discovery request message for sensor "
-                "%02x:%02x",
-                forward->sensor.u8[0], forward->sensor.u8[1]);
-            /* Remove entry */
-            uc_buffer_remove();
-            /* Forward to callback */
-            if (cb->uc.sent != NULL) cb->uc.sent(false);
+          if (!send_emergency_command_message(
+                  (struct command_msg_t *)message->data)) {
+            /* Prepare to discard buffered message */
+            message->last_chance = false;
             continue;
           }
 
           /* Sent */
-          LOG_INFO(
-              "Sending forward discovery request message for sensor "
-              "%02x:%02x",
-              forward->sensor.u8[0], forward->sensor.u8[1]);
-          /* Start forward discovery timeout */
-          ctimer_set(&forward_discovery_timer,
-                     CONNECTION_FORWARD_DISCOVERY_TIMEOUT,
-                     forward_discovery_timer_cb, NULL);
+          /*Start emergency command next in buffer timer */
+          ctimer_set(&emergency_command_next_in_buffer_timer,
+                     CONNECTION_EMERGENCY_COMMAND_NEXT_MESSAGE_IN_BUFFER_DELAY,
+                     emergency_command_next_in_buffer_timer_cb, NULL);
+          /* Start emergency message suppression timer */
+          ctimer_set(&emergency_command_suppression_timer,
+                     CONNECTION_EMERGENCY_COMMAND_SUPPRESSION_PROPAGATION, NULL,
+                     NULL);
           return;
         }
 
@@ -668,119 +656,88 @@ static void uc_send_next(void) {
   }
 }
 
-/* --- FORWARD DISCOVERY --- */
-static void forward_discovery_recv_cb(const struct broadcast_hdr_t *bc_header,
-                                      const linkaddr_t *sender) {
-  struct forward_discovery_msg_t fd_msg;
+/* --- EMERGENCY MESSAGE --- */
+static void emergency_command_next_in_buffer_timer_cb(void *ignored) {
+  LOG_DEBUG("Emergency command next in buffer timer expired");
+  /* Prepare to discard buffered message */
+  struct uc_buffer_t *message = uc_buffer_first();
+  message->last_chance = false;
+  /* Buffer */
+  uc_send_next();
+}
 
-  /* Check received request message */
-  if (packetbuf_datalen() != sizeof(fd_msg)) {
-    LOG_ERROR(
-        "Received forward discovery message of type %d wrong size: %u byte",
-        bc_header->type, packetbuf_datalen());
+static void emergency_command_recv_cb(const struct broadcast_hdr_t *bc_header,
+                                      const linkaddr_t *sender) {
+  struct command_msg_t command_msg;
+
+  if (!ctimer_expired(&emergency_command_suppression_timer) ||
+      !ctimer_expired(&emergency_command_next_in_buffer_timer)) {
+    LOG_WARN("Emergency command message propagation is suppressed");
     return;
   }
 
-  /* Copy request message */
-  packetbuf_copyto(&fd_msg);
+  /* Check received message */
+  if (packetbuf_datalen() != sizeof(command_msg)) {
+    LOG_ERROR("Received emergency command message wrong size: %u byte",
+              packetbuf_datalen());
+    return;
+  }
+
+  /* Copy command message */
+  packetbuf_copyto(&command_msg);
 
   LOG_INFO(
-      "Received forward discovery message of type %d from %02x:%02x: "
-      "{ sensor: %02x:%02x }",
-      bc_header->type, sender->u8[0], sender->u8[1], fd_msg.sensor.u8[0],
-      fd_msg.sensor.u8[1]);
+      "Received emergency command message from %02x:%02x: "
+      "{ receiver: %02x:%02x, command: %d, threshold: %lu, event_seqn: %u, "
+      "event_source: %02x:%02x }",
+      sender->u8[0], sender->u8[1], command_msg.receiver.u8[0],
+      command_msg.receiver.u8[1], command_msg.command, command_msg.threshold,
+      command_msg.event_seqn, command_msg.event_source.u8[0],
+      command_msg.event_source.u8[1]);
 
-  /* Logic */
-  switch (bc_header->type) {
-    case BROADCAST_MSG_TYPE_FORWARD_DISCOVERY_REQUEST: {
-      /* If not me or not known */
-      if (!linkaddr_cmp(&fd_msg.sensor, &linkaddr_node_addr) &&
-          !forward_hop_available(&fd_msg.sensor)) {
-        LOG_WARN("Forward for sensor %02x:%02x is not known",
-                 fd_msg.sensor.u8[0], fd_msg.sensor.u8[1]);
-        return;
-      }
-
-      /* Exists */
-      LOG_INFO("Forward for sensor %02x:%02x is known", fd_msg.sensor.u8[0],
-               fd_msg.sensor.u8[1]);
-
-      /* Prepare packetbuf */
-      packetbuf_clear();
-      packetbuf_copyfrom(&fd_msg, sizeof(fd_msg));
-
-      /* Send */
-      if (!bc_send(BROADCAST_MSG_TYPE_FORWARD_DISCOVERY_RESPONSE)) {
-        LOG_ERROR(
-            "Error sending forward discovery response message for sensor "
-            "%02x:%02x to %02x:%02x",
-            fd_msg.sensor.u8[0], fd_msg.sensor.u8[1], sender->u8[0],
-            sender->u8[1]);
-        break;
-      }
-
-      /* Sent */
-      LOG_INFO(
-          "Sending forward discovery response message for sensor "
-          "%02x:%02x to %02x:%02x",
-          fd_msg.sensor.u8[0], fd_msg.sensor.u8[1], sender->u8[0],
-          sender->u8[1]);
-      break;
-    }
-    case BROADCAST_MSG_TYPE_FORWARD_DISCOVERY_RESPONSE: {
-      /* Ignore if timer expired */
-      if (ctimer_expired(&forward_discovery_timer)) {
-        LOG_WARN(
-            "Ignoring forward discovery response from %02x:%02x beacuse the "
-            "timer has expired",
-            sender->u8[0], sender->u8[1]);
-        return;
-      }
-
-      /* Sensor to find hop */
-      const linkaddr_t *sensor = &uc_buffer_first()->header.final_receiver;
-
-      /* Check request and response match */
-      if (!linkaddr_cmp(sensor, &fd_msg.sensor)) {
-        LOG_WARN(
-            "Forward discovery response has wrong sensor: request is %02x:%02x "
-            "but response is %02x:%02x",
-            sensor->u8[0], sensor->u8[1], fd_msg.sensor.u8[0],
-            fd_msg.sensor.u8[1]);
-        return;
-      }
-
-      /* Add forward */
-      LOG_INFO("Forward response from %02x:%02x for sensor %02x:%02x",
-               sender->u8[0], sender->u8[1], sensor->u8[0], sensor->u8[1]);
-      forward_add(sensor, sender);
-      break;
-    }
-    default: {
-      /* Ignored */
-      break;
-    }
+  /* Check if receiver sensor is me */
+  if (linkaddr_cmp(&command_msg.receiver, &linkaddr_node_addr)) {
+    /* Forward to callback */
+    cb->uc.recv(NULL, sender);
+  } else {
+    /* Remove forward */
+    if (forward_hop_available(&command_msg.receiver))
+      forward_remove(&command_msg.receiver);
+    /* Forward */
+    send_emergency_command_message(&command_msg);
   }
+
+  /* Start emergency message suppression timer */
+  ctimer_set(&emergency_command_suppression_timer,
+             CONNECTION_EMERGENCY_COMMAND_SUPPRESSION_PROPAGATION, NULL, NULL);
 }
 
-static void forward_discovery_timer_cb(void *ignored) {
-  struct uc_buffer_t *message = uc_buffer_first();
-  const struct forward_t *forward =
-      forward_find(&message->header.final_receiver);
+static bool send_emergency_command_message(
+    const struct command_msg_t *command_msg) {
+  /* Prepare packetbuf */
+  packetbuf_clear();
+  packetbuf_copyfrom(command_msg, sizeof(struct command_msg_t));
 
-  LOG_INFO("Forward discovery timer expired for sensor %02x:%02x",
-           forward->sensor.u8[0], forward->sensor.u8[1]);
-  LOG_INFO("Available hops for sensor %02x:%02x: %d", forward->sensor.u8[0],
-           forward->sensor.u8[1], !linkaddr_cmp(&forward->hop, &linkaddr_null));
-
-  if (linkaddr_cmp(&forward->hop, &linkaddr_null)) {
-    LOG_WARN("Forward discovery failed");
-    message->last_chance = false;
-  } else {
-    LOG_INFO("Forward discovery succeeded");
-    message->num_send = CONNECTION_UC_BUFFER_MAX_SEND - 1;
+  /* Send emergency command message in broadcast */
+  const bool ret =
+      connection_broadcast_send(BROADCAST_MSG_TYPE_EMERGENCY_COMMAND);
+  if (!ret)
+    LOG_ERROR(
+        "Error sending emergency command message: "
+        "{ receiver: %02x:%02x, command: %d, threshold: %lu, event_seqn: %u, "
+        "event_source: %02x:%02x }",
+        command_msg->receiver.u8[0], command_msg->receiver.u8[1],
+        command_msg->command, command_msg->threshold, command_msg->event_seqn,
+        command_msg->event_source.u8[0], command_msg->event_source.u8[1]);
+  else {
+    LOG_INFO(
+        "Sending emergency command message: "
+        "{ receiver: %02x:%02x, command: %d, threshold: %lu, event_seqn: %u, "
+        "event_source: %02x:%02x }",
+        command_msg->receiver.u8[0], command_msg->receiver.u8[1],
+        command_msg->command, command_msg->threshold, command_msg->event_seqn,
+        command_msg->event_source.u8[0], command_msg->event_source.u8[1]);
   }
 
-  /* Next unicast buffer */
-  uc_send_next();
+  return ret;
 }

@@ -5,6 +5,8 @@
 #include <stdbool.h>
 #include <sys/types.h>
 
+#include "message.h"
+
 /**
  * @brief Connection object.
  */
@@ -21,20 +23,6 @@ struct connection_t {
 
 /* --- BROADCAST --- */
 /**
- * @brief Broadcast message types.
- */
-enum broadcast_msg_type_t {
-  /* Beacon message. */
-  BROADCAST_MSG_TYPE_BEACON,
-  /* Event message. */
-  BROADCAST_MSG_TYPE_EVENT,
-  /* Forward discovery request. */
-  BROADCAST_MSG_TYPE_FORWARD_DISCOVERY_REQUEST,
-  /* Forward discovery response. */
-  BROADCAST_MSG_TYPE_FORWARD_DISCOVERY_RESPONSE
-};
-
-/**
  * @brief Broadcast header.
  */
 struct broadcast_hdr_t {
@@ -43,16 +31,6 @@ struct broadcast_hdr_t {
 } __attribute__((packed));
 
 /* --- UNICAST --- */
-/**
- * @brief Unicast message types.
- */
-enum unicast_msg_type_t {
-  /* Collect message. */
-  UNICAST_MSG_TYPE_COLLECT,
-  /* Command message. */
-  UNICAST_MSG_TYPE_COMMAND
-};
-
 /**
  * @brief Unicast header.
  */

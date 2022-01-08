@@ -2,9 +2,9 @@
 #define _ETC_H_
 
 #include <net/linkaddr.h>
+#include <stdbool.h>
 #include <sys/ctimer.h>
 
-#include "connection/connection.h"
 #include "node/node.h"
 
 /**
