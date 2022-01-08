@@ -5,6 +5,8 @@
 #include <stdbool.h>
 #include <sys/types.h>
 
+#include "node/node.h"
+
 /**
  * @brief Connection object.
  */
@@ -42,6 +44,36 @@ struct broadcast_hdr_t {
   enum broadcast_msg_type_t type;
 } __attribute__((packed));
 
+/**
+ * @brief Beacon message.
+ */
+struct beacon_msg_t {
+  /* Sequence number. */
+  uint16_t seqn;
+  /* Hop number. */
+  uint16_t hopn;
+} __attribute__((packed));
+
+/**
+ * @brief Event message.
+ */
+struct event_msg_t {
+  /* Event sequence number. */
+  uint16_t seqn;
+  /* Address of the sensor that generated the event. */
+  linkaddr_t source;
+} __attribute__((packed));
+
+/**
+ * @brief Forward discovery message.
+ */
+struct forward_discovery_msg_t {
+  /* Sensor address. */
+  linkaddr_t sensor;
+  /* Hop distance. */
+  uint8_t distance;
+};
+
 /* --- UNICAST --- */
 /**
  * @brief Unicast message types.
@@ -61,8 +93,38 @@ struct unicast_hdr_t {
   enum unicast_msg_type_t type;
   /* Hop count. */
   uint8_t hops;
-  /* Final receiver address. */
-  linkaddr_t final_receiver;
+} __attribute__((packed));
+
+/**
+ * @brief Collect message.
+ */
+struct collect_msg_t {
+  /* Event sequence number. */
+  uint16_t event_seqn;
+  /* Address of the sensor that generated the event. */
+  linkaddr_t event_source;
+  /* Address of sender sensor node. */
+  linkaddr_t sender;
+  /* Node value. */
+  uint32_t value;
+  /* Node threshold. */
+  uint32_t threshold;
+} __attribute__((packed));
+
+/**
+ * @brief Command message.
+ */
+struct command_msg_t {
+  /* Event sequence number. */
+  uint16_t event_seqn;
+  /* Address of the sensor that generated the event. */
+  linkaddr_t event_source;
+  /* Adress of receiver actuator node. */
+  linkaddr_t receiver;
+  /* Command type. */
+  enum command_type_t command;
+  /* New threshold. */
+  uint32_t threshold;
 } __attribute__((packed));
 
 /* --- CALLBACKS --- */

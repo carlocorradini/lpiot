@@ -17,16 +17,6 @@
 static const struct connection_callbacks_t *cb;
 
 /**
- * @brief Forward discovery message.
- */
-struct forward_discovery_msg_t {
-  /* Sensor address. */
-  linkaddr_t sensor;
-  /* Hop distance. */
-  uint8_t distance;
-};
-
-/**
  * @brief Invalidate first hop of the sensor.
  *
  * @param sensor Sensor address.
@@ -459,7 +449,9 @@ static void uc_recv_cb(struct unicast_conn *uc_conn, const linkaddr_t *sender) {
       break;
     }
     case UNICAST_MSG_TYPE_COMMAND: {
-      const struct forward_t *forward = forward_find(&uc_header.final_receiver);
+      struct command_msg_t command_msg;
+      packetbuf_copyto(&command_msg);
+      const struct forward_t *forward = forward_find(&command_msg.receiver);
 
       /* Check sender is not hop */
       if (linkaddr_cmp(sender, &forward->hops[0].address)) {
@@ -468,7 +460,7 @@ static void uc_recv_cb(struct unicast_conn *uc_conn, const linkaddr_t *sender) {
             "%02x:%02x",
             sender->u8[0], sender->u8[1]);
         /* Invalidate hop */
-        invalidate_hop(&uc_header.final_receiver);
+        invalidate_hop(&command_msg.receiver);
       }
       break;
     }
@@ -532,9 +524,11 @@ static void uc_sent_cb(struct unicast_conn *uc_conn, int status, int num_tx) {
           break;
         }
         case UNICAST_MSG_TYPE_COMMAND: {
+          const struct command_msg_t *command_msg =
+              (struct command_msg_t *)message->data;
+
           /* Ignore if handle NULL */
-          if (linkaddr_cmp(&message->header.final_receiver, &linkaddr_null))
-            break;
+          if (linkaddr_cmp(&command_msg->receiver, &linkaddr_null)) break;
 
           /* Give a last chance */
           if (!message->last_chance) {
@@ -544,7 +538,7 @@ static void uc_sent_cb(struct unicast_conn *uc_conn, int status, int num_tx) {
           }
 
           /* Invalidate hop */
-          invalidate_hop(&message->header.final_receiver);
+          invalidate_hop(&command_msg->receiver);
 
           /* Try with new hop or prepare to discovery */
           retry = true;
@@ -647,8 +641,9 @@ static void uc_send_next(void) {
         break;
       }
       case UNICAST_MSG_TYPE_COMMAND: {
-        const struct forward_t *forward =
-            forward_find(&message->header.final_receiver);
+        const struct command_msg_t *command_msg =
+            (struct command_msg_t *)message->data;
+        const struct forward_t *forward = forward_find(&command_msg->receiver);
         if (forward == NULL) break;
 
         /* If no available hop try to find one */
@@ -821,24 +816,24 @@ static void forward_discovery_recv_cb(const struct broadcast_hdr_t *bc_header,
         return;
       }
 
-      /* Sensor to find hop */
-      const linkaddr_t *sensor = &uc_buffer_first()->header.final_receiver;
+      const struct command_msg_t *command_msg =
+          (struct command_msg_t *)uc_buffer_first()->data;
 
       /* Check request and response match */
-      if (!linkaddr_cmp(sensor, &fd_msg.sensor)) {
+      if (!linkaddr_cmp(&command_msg->receiver, &fd_msg.sensor)) {
         LOG_WARN(
             "Forward discovery response has wrong sensor: request is %02x:%02x "
             "but response is %02x:%02x",
-            sensor->u8[0], sensor->u8[1], fd_msg.sensor.u8[0],
-            fd_msg.sensor.u8[1]);
+            command_msg->receiver.u8[0], command_msg->receiver.u8[1],
+            fd_msg.sensor.u8[0], fd_msg.sensor.u8[1]);
         return;
       }
 
       LOG_INFO(
           "Forward discovery response from %02x:%02x with distance %u for "
           "sensor %02x:%02x",
-          sender->u8[0], sender->u8[1], fd_msg.distance, sensor->u8[0],
-          sensor->u8[1]);
+          sender->u8[0], sender->u8[1], fd_msg.distance,
+          command_msg->receiver.u8[0], command_msg->receiver.u8[1]);
       /* Learn */
       forward_add(&fd_msg.sensor, sender, fd_msg.distance);
       break;
@@ -851,8 +846,9 @@ static void forward_discovery_recv_cb(const struct broadcast_hdr_t *bc_header,
 }
 
 static void forward_discovery_timer_cb(void *ignored) {
-  const struct forward_t *forward =
-      forward_find(&uc_buffer_first()->header.final_receiver);
+  const struct command_msg_t *command_msg =
+      (struct command_msg_t *)uc_buffer_first()->data;
+  const struct forward_t *forward = forward_find(&command_msg->receiver);
   const size_t hops_length = forward_hops_length(&forward->sensor);
 
   LOG_INFO("Forward discovery timer expired for sensor %02x:%02x",

@@ -61,7 +61,6 @@ bool uc_buffer_add(const struct unicast_hdr_t *header,
   /* Header */
   buffer[i].header.type = header->type;
   buffer[i].header.hops = header->hops;
-  linkaddr_copy(&buffer[i].header.final_receiver, &header->final_receiver);
   /* END Header */
   linkaddr_copy(&buffer[i].receiver, receiver);
   buffer[i].receiver_is_parent =
@@ -115,8 +114,6 @@ static void shift_left(void) {
     /* Header */
     buffer[i].header.type = buffer[i + 1].header.type;
     buffer[i].header.hops = buffer[i + 1].header.hops;
-    linkaddr_copy(&buffer[i].header.final_receiver,
-                  &buffer[i + 1].header.final_receiver);
     /* END Header */
     linkaddr_copy(&buffer[i].receiver, &buffer[i + 1].receiver);
     buffer[i].receiver_is_parent = buffer[i + 1].receiver_is_parent;

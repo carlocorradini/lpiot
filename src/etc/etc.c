@@ -4,49 +4,8 @@
 #include <net/packetbuf.h>
 
 #include "config/config.h"
+#include "connection/connection.h"
 #include "connection/forward.h"
-
-/**
- * @brief Event message.
- */
-struct event_msg_t {
-  /* Event sequence number. */
-  uint16_t seqn;
-  /* Address of the sensor that generated the event. */
-  linkaddr_t source;
-} __attribute__((packed));
-
-/**
- * @brief Collect message.
- */
-struct collect_msg_t {
-  /* Event sequence number. */
-  uint16_t event_seqn;
-  /* Address of the sensor that generated the event. */
-  linkaddr_t event_source;
-  /* Address of sender sensor node. */
-  linkaddr_t sender;
-  /* Node value. */
-  uint32_t value;
-  /* Node threshold. */
-  uint32_t threshold;
-} __attribute__((packed));
-
-/**
- * @brief Command message.
- */
-struct command_msg_t {
-  /* Event sequence number. */
-  uint16_t event_seqn;
-  /* Address of the sensor that generated the event. */
-  linkaddr_t event_source;
-  /* Adress of receiver actuator node. */
-  linkaddr_t receiver;
-  /* Command type. */
-  enum command_type_t command;
-  /* New threshold. */
-  uint32_t threshold;
-} __attribute__((packed));
 
 /* Sensor value. */
 static uint32_t sensor_value;
@@ -298,7 +257,6 @@ bool etc_command(const linkaddr_t *receiver, enum command_type_t command,
   /* Prepare header */
   header.type = UNICAST_MSG_TYPE_COMMAND;
   header.hops = 0;
-  linkaddr_copy(&header.final_receiver, receiver);
 
   /* Prepare command message */
   command_msg.event_seqn = event.seqn;
@@ -481,7 +439,6 @@ static void collect_timer_cb(void *ignored) {
   struct unicast_hdr_t header;
   header.type = UNICAST_MSG_TYPE_COLLECT;
   header.hops = 0;
-  linkaddr_copy(&header.final_receiver, &CONTROLLER);
 
   /* Prepare collect message */
   struct collect_msg_t collect_msg;
