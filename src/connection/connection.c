@@ -70,6 +70,12 @@ static const struct broadcast_callbacks bc_cb = {.recv = bc_recv_cb,
 static struct unicast_conn uc_conn;
 
 /**
+ * @brief Unicast buffer send timer.
+ * Used when a message need to be resend after a failure.
+ */
+static struct ctimer uc_buffer_send_timer;
+
+/**
  * @brief Send a unicast message to receiver address.
  *
  * @param uc_header Header.
@@ -96,6 +102,13 @@ static void uc_recv_cb(struct unicast_conn *uc_conn, const linkaddr_t *sender);
  * @param num_tx Total number of transmission(s).
  */
 static void uc_sent_cb(struct unicast_conn *uc_conn, int status, int num_tx);
+
+/**
+ * @brief Unicast buffer send timer callback.
+ *
+ * @param ignored
+ */
+static void uc_buffer_send_timer_cb(void *ignored);
 
 /**
  * @brief Send next message in buffer (if any).
@@ -515,6 +528,34 @@ static void uc_sent_cb(struct unicast_conn *uc_conn, int status, int num_tx) {
   uc_send_next();
 }
 
+static void uc_buffer_send_timer_cb(void *ignored) {
+  /* Obtain buffered message */
+  const struct uc_buffer_t *message = uc_buffer_first();
+
+  /* Try sending */
+  if (!uc_send(&message->header, &message->receiver)) {
+    LOG_ERROR(
+        "Error sending buffered unicast message: "
+        "{ receiver: %02x:%02x, type: %d, num_send: %u }",
+        message->receiver.u8[0], message->receiver.u8[1], message->header.type,
+        message->num_send);
+    /* Forward to callback */
+    if (cb->uc.sent != NULL) cb->uc.sent(false);
+    /* Remove entry */
+    uc_buffer_remove();
+    /* Next */
+    uc_send_next();
+    return;
+  }
+
+  /* Sent */
+  LOG_INFO(
+      "Sending buffered unicast message: "
+      "{ receiver: %02x:%02x, type: %d, num_send: %u }",
+      message->receiver.u8[0], message->receiver.u8[1], message->header.type,
+      message->num_send);
+}
+
 static void uc_send_next(void) {
   /* Send message in buffer (if any) */
   while (!uc_bufffer_is_empty()) {
@@ -613,20 +654,16 @@ static void uc_send_next(void) {
     packetbuf_clear();
     packetbuf_copyfrom(message->data, message->data_len);
 
-    /* Send */
-    if (!uc_send(&message->header, &message->receiver)) {
-      LOG_ERROR("Error sending buffered mesage");
-      /* Forward to callback */
-      if (cb->uc.sent != NULL) cb->uc.sent(false);
-      continue;
+    /* Send logic */
+    if (message->num_send > 0 || message->last_chance) {
+      /* Message failed at least one time, send after a delay */
+      ctimer_set(&uc_buffer_send_timer, CONNECTION_UC_BUFFER_SEND_DELAY,
+                 uc_buffer_send_timer_cb, NULL);
+    } else {
+      /* First time sending message, no necesssity to delay */
+      uc_buffer_send_timer_cb(NULL);
     }
 
-    /* Sent */
-    LOG_INFO(
-        "Sending buffered unicast message: "
-        "{ receiver: %02x:%02x, type: %d, num_send: %u }",
-        message->receiver.u8[0], message->receiver.u8[1], message->header.type,
-        message->num_send);
     return;
   }
 }

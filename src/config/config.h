@@ -146,6 +146,12 @@ extern const linkaddr_t SENSORS[NUM_SENSORS];
 #define CONNECTION_UC_BUFFER_MAX_SEND (1)
 
 /**
+ * @brief Time to wait before sending a message in the unicast buffer that
+ * failed at least one time.
+ */
+#define CONNECTION_UC_BUFFER_SEND_DELAY (random_rand() % (CLOCK_SECOND / 10))
+
+/**
  * @brief Time to wait before checking the forward hops of the sensor.
  */
 #define CONNECTION_FORWARD_DISCOVERY_TIMEOUT (CLOCK_SECOND * 1)
