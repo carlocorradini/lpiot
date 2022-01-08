@@ -96,8 +96,8 @@ void forward_remove_hop(const linkaddr_t* sensor,
   }
   if (i >= CONNECTION_FORWARD_MAX_SIZE) return;
 
-  LOG_WARN("Removing hop %02x:%02x with distance %u for sensor %02x:%02x",
-           f->hops[0].address.u8[0], f->hops[0].address.u8[1],
+  LOG_WARN("Removing hop %02x:%02x at %d with distance %u for sensor %02x:%02x",
+           f->hops[0].address.u8[0], f->hops[0].address.u8[1], i,
            f->hops[0].distance, sensor->u8[0], sensor->u8[1]);
 
   /* Remove */
@@ -120,6 +120,33 @@ size_t forward_hops_length(const linkaddr_t* sensor) {
   }
 
   return length;
+}
+
+void forward_sort(const linkaddr_t* sensor) {
+  struct forward_t* f = forward_find(sensor);
+  struct forward_hop_t tmp;
+  size_t i;
+  size_t j;
+  if (f == NULL) return;
+
+  for (i = 0; i < CONNECTION_UC_BUFFER_MAX_SEND; ++i) {
+    for (j = i + 1; j < CONNECTION_UC_BUFFER_MAX_SEND; ++j) {
+      if (f->hops[i].distance > f->hops[j].distance) {
+        /* Copy tmp */
+        linkaddr_copy(&tmp.address, &f->hops[i].address);
+        tmp.distance = f->hops[i].distance;
+        /* j in i */
+        linkaddr_copy(&f->hops[i].address, &f->hops[j].address);
+        f->hops[i].distance = f->hops[j].distance;
+        /* tmp in j */
+        linkaddr_copy(&f->hops[j].address, &tmp.address);
+        f->hops[j].distance = tmp.distance;
+      }
+    }
+  }
+
+  /* Print */
+  print_forwardings();
 }
 
 /* --- RESET --- */

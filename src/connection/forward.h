@@ -79,4 +79,11 @@ void forward_remove_hop(const linkaddr_t* sensor,
  */
 size_t forward_hops_length(const linkaddr_t* sensor);
 
+/**
+ * @brief Sort hops by distance in ASC order.
+ *
+ * @param sensor Sensor address.
+ */
+void forward_sort(const linkaddr_t* sensor);
+
 #endif

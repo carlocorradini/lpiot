@@ -512,7 +512,6 @@ static void uc_sent_cb(struct unicast_conn *uc_conn, int status, int num_tx) {
               message->last_chance = false;
               message->num_send = CONNECTION_UC_BUFFER_MAX_SEND - 1;
             }
-            break;
           } else {
             /* Parent changed dinamically */
             retry = true;
@@ -864,6 +863,8 @@ static void forward_discovery_timer_cb(void *ignored) {
     if (cb->uc.sent != NULL) cb->uc.sent(false);
   } else {
     LOG_INFO("Forward discovery succeeded");
+    /* Sort new hops */
+    forward_sort(&forward->sensor);
   }
 
   /* Next unicast buffer */
