@@ -194,11 +194,11 @@ void etc_close(void) {
   cb = NULL;
 
   /* Event */
-  sensor_event_seqn = 0;
   event.seqn = 0;
   linkaddr_copy(&event.source, &linkaddr_null);
 
   /* Sensor */
+  sensor_event_seqn = 0;
   sensor_value = 0;
   sensor_threshold = 0;
 

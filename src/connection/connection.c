@@ -166,6 +166,10 @@ void connection_open(uint16_t channel,
 void connection_close(void) {
   cb = NULL;
 
+  /* Stop timer  */
+  ctimer_stop(&uc_buffer_send_timer);
+  ctimer_stop(&forward_discovery_timer);
+
   /* Terminate unicast buffer */
   uc_buffer_terminate();
 
