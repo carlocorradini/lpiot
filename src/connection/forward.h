@@ -6,6 +6,16 @@
 #include "config/config.h"
 
 /**
+ * @brief Hop forward structure.
+ */
+struct forward_hop_t {
+  /* Address of the hop. */
+  linkaddr_t address;
+  /* Hop distance. */
+  uint8_t distance;
+};
+
+/**
  * @brief Forward table entry.
  * Defines how a message to a Sensor node should be forwarded.
  * Note that there could be no forwarding rule available.
@@ -13,8 +23,8 @@
 struct forward_t {
   /* Sensor node address (receiver). */
   linkaddr_t sensor;
-  /* Forwarding node addresses (next-hop). */
-  linkaddr_t hops[CONNECTION_FORWARD_MAX_SIZE];
+  /* Forwarding nodes (next-hop). */
+  struct forward_hop_t hops[CONNECTION_FORWARD_MAX_SIZE];
 };
 
 /**
@@ -39,9 +49,11 @@ struct forward_t* forward_find(const linkaddr_t* sensor);
  * @brief Add a next hop to reach sensors.
  *
  * @param sensor Sensor address.
- * @param next_hop Next hop adress.
+ * @param hop_address Hop address.
+ * @param hop_distance Hop distance.
  */
-void forward_add(const linkaddr_t* sensor, const linkaddr_t* next_hop);
+void forward_add(const linkaddr_t* sensor, const linkaddr_t* hop_address,
+                 uint8_t hop_distance);
 
 /**
  * @brief Remove the first available hop of the sensor.
