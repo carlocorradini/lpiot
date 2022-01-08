@@ -659,7 +659,7 @@ static void uc_send_next(void) {
           packetbuf_clear();
           packetbuf_copyfrom(&fd_msg, sizeof(fd_msg));
 
-          /* Send */
+          /* Try send */
           if (!bc_send(BROADCAST_MSG_TYPE_FORWARD_DISCOVERY_REQUEST)) {
             LOG_ERROR(
                 "Error sending forward discovery request message for sensor "
