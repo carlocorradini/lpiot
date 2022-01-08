@@ -459,7 +459,7 @@ static bool send_collect_message(const struct unicast_hdr_t *header,
   /* Check connection */
   if (!connection_is_connected()) {
     LOG_WARN(
-        "Unable to forward collect message because the node is "
+        "Unable to send collect message because the node is "
         "disconnected");
     return false;
   }
