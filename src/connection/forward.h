@@ -51,6 +51,15 @@ void forward_add(const linkaddr_t* sensor, const linkaddr_t* next_hop);
 void forward_remove(const linkaddr_t* sensor);
 
 /**
+ * @brief Remove a specific hop of the sensor.
+ *
+ * @param sensor Sensor address.
+ * @param hop_address Hop address.
+ */
+void forward_remove_hop(const linkaddr_t* sensor,
+                        const linkaddr_t* hop_address);
+
+/**
  * @brief Return the number of available hops of the sensor node.
  *
  * @param sensor Sensor address.

@@ -733,7 +733,7 @@ static void forward_discovery_recv_cb(const struct broadcast_hdr_t *bc_header,
   /* Logic */
   switch (bc_header->type) {
     case BROADCAST_MSG_TYPE_FORWARD_DISCOVERY_REQUEST: {
-      /* If not me or not known */
+      /* Ignore if sensor is not me and not known */
       if (!linkaddr_cmp(&fd_msg.sensor, &linkaddr_node_addr) &&
           forward_hops_length(&fd_msg.sensor) == 0) {
         LOG_WARN("Forward for sensor %02x:%02x is not known",
@@ -741,15 +741,44 @@ static void forward_discovery_recv_cb(const struct broadcast_hdr_t *bc_header,
         return;
       }
 
-      /* Exists */
-      LOG_INFO("Forward for sensor %02x:%02x is known", fd_msg.sensor.u8[0],
-               fd_msg.sensor.u8[1]);
+      if (linkaddr_cmp(&fd_msg.sensor, &linkaddr_node_addr)) {
+        /* Sensor is me */
+        LOG_INFO("Forward for sensor %02x:%02x is me", fd_msg.sensor.u8[0],
+                 fd_msg.sensor.u8[1]);
+      } else {
+        const struct forward_t *forward = forward_find(&fd_msg.sensor);
+
+        /* If sender is my primary hop */
+        if (linkaddr_cmp(sender, &forward->hops[0])) {
+          /* Check if I know another hop */
+          if (!linkaddr_cmp(&forward->hops[1], &linkaddr_null)) {
+            LOG_INFO(
+                "Hop %02x:%02x for sensor %02x:%02x is my primary but "
+                "different hop is known: %02x:%02x",
+                sender->u8[0], sender->u8[1], forward->sensor.u8[0],
+                forward->sensor.u8[1], forward->hops[1].u8[0],
+                forward->hops[1].u8[1]);
+          } else {
+            /* No other hop known */
+            LOG_INFO(
+                "Hop %02x:%02x for sensor %02x:%02x is my primary and no other "
+                "hop is known",
+                sender->u8[0], sender->u8[1], forward->sensor.u8[0],
+                forward->sensor.u8[1]);
+            return;
+          }
+        } else {
+          /* Known */
+          LOG_INFO("Forward for sensor %02x:%02x is known", fd_msg.sensor.u8[0],
+                   fd_msg.sensor.u8[1]);
+        }
+      }
 
       /* Prepare packetbuf */
       packetbuf_clear();
       packetbuf_copyfrom(&fd_msg, sizeof(fd_msg));
 
-      /* Send */
+      /* Try send */
       if (!bc_send(BROADCAST_MSG_TYPE_FORWARD_DISCOVERY_RESPONSE)) {
         LOG_ERROR(
             "Error sending forward discovery response message for sensor "
@@ -790,10 +819,10 @@ static void forward_discovery_recv_cb(const struct broadcast_hdr_t *bc_header,
         return;
       }
 
-      /* Add forward */
-      LOG_INFO("Forward response from %02x:%02x for sensor %02x:%02x",
+      LOG_INFO("Forward discovery response from %02x:%02x for sensor %02x:%02x",
                sender->u8[0], sender->u8[1], sensor->u8[0], sensor->u8[1]);
-      forward_add(sensor, sender);
+      /* Learn */
+      forward_add(&fd_msg.sensor, sender);
       break;
     }
     default: {

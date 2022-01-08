@@ -81,6 +81,30 @@ void forward_remove(const linkaddr_t* sensor) {
   print_forwardings();
 }
 
+void forward_remove_hop(const linkaddr_t* sensor,
+                        const linkaddr_t* hop_address) {
+  struct forward_t* f = forward_find(sensor);
+  size_t i;
+
+  if (f == NULL) return;
+
+  for (i = 0; i < CONNECTION_FORWARD_MAX_SIZE; ++i) {
+    if (linkaddr_cmp(hop_address, &f->hops[i])) break;
+  }
+  if (i >= CONNECTION_FORWARD_MAX_SIZE) return;
+
+  LOG_WARN(
+      "Removing hop at %d for sensor %02x:%02x: "
+      "%02x:%02x",
+      i, f->sensor.u8[0], f->sensor.u8[1], f->hops[i].u8[0], f->hops[i].u8[1]);
+
+  /* Remove */
+  shift_left(f, i);
+
+  /* Print */
+  print_forwardings();
+}
+
 size_t forward_hops_length(const linkaddr_t* sensor) {
   struct forward_t* f = forward_find(sensor);
   size_t i;
