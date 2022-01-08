@@ -293,7 +293,6 @@ bool etc_command(const linkaddr_t *receiver, enum command_type_t command,
                  uint32_t threshold) {
   struct unicast_hdr_t header;
   struct command_msg_t command_msg;
-  struct forward_t *forward = forward_find(receiver);
 
   /* Prepare header */
   header.type = UNICAST_MSG_TYPE_COMMAND;
@@ -308,7 +307,7 @@ bool etc_command(const linkaddr_t *receiver, enum command_type_t command,
   command_msg.threshold = threshold;
 
   /* Check if forwarding rule exists */
-  if (forward == NULL || linkaddr_cmp(&forward->hops[0], &linkaddr_null)) {
+  if (!forward_hop_available(receiver)) {
     LOG_ERROR(
         "Unable to send command message because no forwarding rule has "
         "been found for sensor %02x:%02x",
@@ -317,7 +316,8 @@ bool etc_command(const linkaddr_t *receiver, enum command_type_t command,
   }
 
   /* Send */
-  return send_command_message(&header, &command_msg, &forward->hops[0]);
+  return send_command_message(&header, &command_msg,
+                              &forward_find(receiver)->hop);
 }
 
 /* --- EVENT MESSAGE --- */
@@ -434,8 +434,8 @@ static void collect_msg_cb(const struct unicast_hdr_t *header,
   forward_add(&collect_msg.sender, sender);
 
   /* Ignore if not current event */
-  if (collect_msg.event_seqn != event.seqn &&
-      !linkaddr_cmp(&collect_msg.event_source, &event.source)) {
+  if (!linkaddr_cmp(&collect_msg.event_source, &event.source) &&
+      collect_msg.event_seqn != event.seqn) {
     LOG_WARN(
         "Collect message event { seqn: %u, source: %02x:%02x } is not "
         "currently handled event { seqn: %u, source: %02x:%02x }",
@@ -561,11 +561,8 @@ static void command_msg_cb(const struct unicast_hdr_t *header,
 
   /* Check receiver address */
   if (!linkaddr_cmp(&command_msg.receiver, &linkaddr_node_addr)) {
-    /* Forward */
-    const struct forward_t *forward = forward_find(&command_msg.receiver);
-
     /* Check if forwarding rule exists */
-    if (forward_hops_length(&command_msg.receiver) == 0) {
+    if (!forward_hop_available(&command_msg.receiver)) {
       LOG_ERROR(
           "Unable to forward command message because no forwarding rule has "
           "been found for sensor %02x:%02x",
@@ -574,7 +571,8 @@ static void command_msg_cb(const struct unicast_hdr_t *header,
     }
 
     /* Forward to next hop node */
-    send_command_message(header, &command_msg, &forward->hops[0]);
+    send_command_message(header, &command_msg,
+                         &forward_find(&command_msg.receiver)->hop);
     return;
   }
 

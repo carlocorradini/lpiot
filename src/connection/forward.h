@@ -13,8 +13,8 @@
 struct forward_t {
   /* Sensor node address (receiver). */
   linkaddr_t sensor;
-  /* Forwarding node addresses (next-hop). */
-  linkaddr_t hops[CONNECTION_FORWARD_MAX_SIZE];
+  /* Next hop address. */
+  linkaddr_t hop;
 };
 
 /**
@@ -36,26 +36,27 @@ void forward_terminate(void);
 struct forward_t* forward_find(const linkaddr_t* sensor);
 
 /**
- * @brief Add a next hop to reach sensors.
+ * @brief Add a new hop to reach the sensor.
  *
  * @param sensor Sensor address.
- * @param next_hop Next hop adress.
+ * @param hop Next hop adress.
  */
-void forward_add(const linkaddr_t* sensor, const linkaddr_t* next_hop);
+void forward_add(const linkaddr_t* sensor, const linkaddr_t* hop);
 
 /**
- * @brief Remove the first available hop of the sensor.
+ * @brief Remove the hop of the sensor.
  *
  * @param sensor Sensor address.
  */
 void forward_remove(const linkaddr_t* sensor);
 
 /**
- * @brief Return the number of available hops of the sensor node.
+ * @brief Check if exists a hop for the sensor.
  *
  * @param sensor Sensor address.
- * @return Number of available hops.
+ * @return true Hop available.
+ * @return false Hop not available.
  */
-size_t forward_hops_length(const linkaddr_t* sensor);
+bool forward_hop_available(const linkaddr_t* sensor);
 
 #endif

@@ -13,7 +13,6 @@ from datetime import datetime
 
 NUM_SENSORS = 5
 
-
 def parse_file(log_file, testbed=False):
     # Print some basic information for the user
     print(f"Logfile: {log_file}")
@@ -216,9 +215,12 @@ def exp_analysis(fexp_name):
     # Per-node actuation reliability
     sensors = sorted(df.sensor.unique())
     for sensor in sensors:
-        n_command = cmd_df_nodup[(cmd_df_nodup.type == 'COMMAND') & (cmd_df_nodup.sensor == sensor)].shape[0]
-        n_actuation = act_df_nodup[(act_df_nodup.type == 'ACTUATION') & (act_df_nodup.sensor == sensor)].shape[0]
-        print(f"SENSOR {sensor} -- ACTUATION PDR: {round(n_actuation/n_command, 4)}")
+        n_command = cmd_df_nodup[cmd_df_nodup.sensor == sensor].shape[0]
+        n_actuation = act_df_nodup[act_df_nodup.sensor == sensor].shape[0]
+        if n_command == 0:
+            print(f"SENSOR {sensor} -- no commands generated.")
+        else:
+            print(f"SENSOR {sensor} -- ACTUATION PDR: {round(n_actuation/n_command, 4)}")
 
 
 def parse_args():
