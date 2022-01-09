@@ -63,11 +63,6 @@ extern const linkaddr_t CONTROLLER;
 #define CONTROLLER_MAX_THRESHOLD (50000)
 
 /**
- * @brief Critical difference.
- */
-#define CONTROLLER_CRITICAL_DIFF (15000)
-
-/**
  * @brief Time to wait before analyzing the Sensor readings.
  */
 #define CONTROLLER_COLLECT_WAIT (CLOCK_SECOND * 10)
