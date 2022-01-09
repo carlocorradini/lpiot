@@ -74,7 +74,7 @@ extern const linkaddr_t CONTROLLER;
 #define NUM_SENSORS (5)
 
 /**
- * @brief Sensor's addresses.
+ * @brief Sensors addresses.
  */
 extern const linkaddr_t SENSORS[NUM_SENSORS];
 
