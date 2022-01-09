@@ -810,6 +810,11 @@ static void forward_discovery_recv_cb(const struct broadcast_hdr_t *bc_header,
       /* Increase distance by 1 */
       fd_msg.distance += 1;
 
+      /* Learn */
+      forward_add(&fd_msg.sensor, sender, fd_msg.distance);
+      /* Sort */
+      forward_sort(&fd_msg.sensor);
+
       /* Ignore if timer expired */
       if (ctimer_expired(&forward_discovery_timer)) {
         LOG_WARN(
@@ -837,8 +842,6 @@ static void forward_discovery_recv_cb(const struct broadcast_hdr_t *bc_header,
           "sensor %02x:%02x",
           sender->u8[0], sender->u8[1], fd_msg.distance,
           command_msg->receiver.u8[0], command_msg->receiver.u8[1]);
-      /* Learn */
-      forward_add(&fd_msg.sensor, sender, fd_msg.distance);
       break;
     }
     default: {
