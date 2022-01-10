@@ -10,7 +10,7 @@
 #include "node/node.h"
 #include "node/sensor/sensor.h"
 #ifdef STATS
-#include "tool/simple-energest.h"
+#include "tool/simple_energest.h"
 #endif
 
 /* --- APPLICATION --- */

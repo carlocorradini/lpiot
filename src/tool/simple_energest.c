@@ -40,7 +40,7 @@
  *      Pablo Corbalan <pablo.corbalan@cit.ie>
  */
 
-#include "simple-energest.h"
+#include "simple_energest.h"
 
 #include <contiki.h>
 #include <stdio.h>

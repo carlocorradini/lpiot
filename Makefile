@@ -39,7 +39,7 @@ PROJECT_SOURCEFILES += \
 					   logger.c \
 					   node.c controller.c forwarder.c sensor.c
 ifeq ($(STATS), true)
-PROJECT_SOURCEFILES += simple-energest.c
+PROJECT_SOURCEFILES += simple_energest.c
 endif
 
 # --- RECIPES
