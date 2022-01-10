@@ -393,7 +393,7 @@ static void collect_msg_cb(const struct unicast_hdr_t *header,
   forward_add(&collect_msg.sender, sender, header->hops);
 
   /* Ignore if not current event */
-  if (collect_msg.event_seqn != event.seqn &&
+  if (collect_msg.event_seqn != event.seqn ||
       !linkaddr_cmp(&collect_msg.event_source, &event.source)) {
     LOG_WARN(
         "Collect message event { seqn: %u, source: %02x:%02x } is not "
